@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"marketpay/internal/store"
 	"marketpay/internal/transport/http"
 	"marketpay/internal/ussd"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -16,6 +16,9 @@ import (
 func main() {
 	// Initialize logger
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
+	// Set Gin to release mode for production
+	// gin.SetMode(gin.ReleaseMode)
 
 	// Create state store
 	stateStore := store.NewInMemoryStateStore()
@@ -29,7 +32,7 @@ func main() {
 	// Example 1: Demonstrate flow programmatically
 	demonstrateFlow(flowService)
 
-	// Example 2: Start HTTP server
+	// Example 2: Start HTTP server with Gin
 	startHTTPServer(handler)
 }
 
@@ -128,24 +131,39 @@ func demonstrateFlow(flowService *ussd.MarketPayFlowService) {
 	fmt.Println("=== End of Demo ===\n")
 }
 
-// startHTTPServer starts the HTTP server for USSD requests
+// startHTTPServer starts the HTTP server for USSD requests using Gin
 func startHTTPServer(handler *http.MarketPayUSSDHandler) {
-	http.HandleFunc("/api/ussd/advance", handler.Advance)
-	http.HandleFunc("/health", handler.HealthCheck)
+	// Create Gin router
+	router := gin.Default()
 
-	fmt.Println("\nStarting HTTP Server on :8080...")
-	fmt.Println("Health Check: http://localhost:8080/health")
-	fmt.Println("USSD Endpoint: POST http://localhost:8080/api/ussd/advance")
-	fmt.Println("\nExample Request:")
-	fmt.Println(`curl -X POST http://localhost:8080/api/ussd/advance \
-  -H "Content-Type: application/json" \
-  -d '{
-    "session_id": "test-session",
-    "current_page": "mp_select_service",
-    "values": {"selected_service": "pay_vendor"}
-  }'`)
+	// Add middleware for logging
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	// Setup all routes
+	handler.SetupRoutes(router)
+
+	// Print available routes
+	fmt.Println("\n=== MarketPay USSD Service Started ===\n")
+	fmt.Println("📍 Server running on http://localhost:8080")
+	fmt.Println("\n📚 Available Endpoints:")
+	fmt.Println("   • GET  /health")
+	fmt.Println("   • GET  /healthz")
+	fmt.Println("   • GET  /api/info")
+	fmt.Println("   • POST /api/ussd/advance (legacy)")
+	fmt.Println("   • POST /api/v1/ussd/advance (v1)")
+	fmt.Println("\n📝 Example Request:")
+	fmt.Println(`   curl -X POST http://localhost:8080/api/v1/ussd/advance \
+     -H "Content-Type: application/json" \
+     -d '{
+       "session_id": "user-001",
+       "current_page": "mp_select_service",
+       "values": {"selected_service": "pay_vendor"}
+     }'`)
+	fmt.Println("\n✅ Service is ready to handle requests\n")
+
+	// Start server
+	if err := router.Run(":8080"); err != nil {
 		log.Fatal().Err(err).Msg("failed to start HTTP server")
 	}
 }
