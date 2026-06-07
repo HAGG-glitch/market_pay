@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
-import Image from "next/image";
 import {
   LayoutDashboard,
   Wallet,
@@ -109,7 +108,9 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center gap-2 border-b px-6">
-          <Image src="/logo.png" alt="MarketPay" width={32} height={32} className="rounded-lg" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <Wallet className="h-5 w-5 text-white" />
+          </div>
           <span className="text-xl font-bold text-primary">MarketPay</span>
         </div>
 
