@@ -86,12 +86,15 @@ export function Sidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-md md:hidden"
-      >
-        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
+      {!mobileOpen && (
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-md md:hidden"
+          aria-label="Open navigation menu"
+        >
+          <Menu size={20} />
+        </button>
+      )}
 
       {mobileOpen && (
         <div
@@ -107,11 +110,20 @@ export function Sidebar() {
           mobileOpen && "translate-x-0"
         )}
       >
-        <div className="flex h-16 items-center gap-2 border-b px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Wallet className="h-5 w-5 text-white" />
+        <div className="flex h-16 items-center justify-between border-b px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Wallet className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-primary">MarketPay</span>
           </div>
-          <span className="text-xl font-bold text-primary">MarketPay</span>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden"
+            aria-label="Close navigation menu"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main navigation">
