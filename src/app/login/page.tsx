@@ -53,7 +53,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#486B6D]">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
             <Wallet className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">MarketPay</h1>
@@ -94,6 +94,7 @@ export default function LoginPage() {
             className="w-full"
             size="lg"
             disabled={login.isPending}
+            aria-label="Sign in to your account"
           >
             {login.isPending ? "Signing in..." : "Sign In"}
           </Button>
@@ -108,7 +109,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowDev(!showDev)}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 transition-colors hover:border-[#486B6D] hover:text-[#486B6D]"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 transition-colors hover:border-primary hover:text-primary"
           >
             {showDev ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             {showDev ? "Hide" : "Show"} Developer Test Access
@@ -124,7 +125,7 @@ export default function LoginPage() {
                   type="button"
                   key={u.role}
                   onClick={() => devLogin(u.role, u.name)}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-left text-sm transition-colors hover:border-[#486B6D] hover:bg-[#486B6D]/5"
+                  className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-left text-sm transition-colors hover:border-primary hover:bg-primary/5"
                 >
                   <span className="font-medium text-gray-900">{u.name}</span>
                   <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">

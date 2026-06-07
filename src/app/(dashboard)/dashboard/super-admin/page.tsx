@@ -63,28 +63,30 @@ export default function SuperAdminDashboard() {
           <CardTitle>Recent Loans</CardTitle>
         </CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-gray-500">
-                <th className="pb-3 font-medium">ID</th>
-                <th className="pb-3 font-medium">Amount</th>
-                <th className="pb-3 font-medium">Status</th>
-                <th className="pb-3 font-medium">Interest</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loans.slice(0, 5).map((loan) => (
-                <tr key={loan.id} className="border-b last:border-0">
-                  <td className="py-3 text-gray-900">{loan.id.slice(0, 8)}</td>
-                  <td className="py-3 font-medium">{formatCurrency(loan.amount)}</td>
-                  <td className="py-3">
-                    <Badge variant="info">{loan.status}</Badge>
-                  </td>
-                  <td className="py-3">{loan.interest_rate}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-left text-gray-500">
+                    <th className="pb-3 pt-3 pl-4 font-medium">ID</th>
+                    <th className="pb-3 pt-3 font-medium">Amount</th>
+                    <th className="pb-3 pt-3 font-medium">Status</th>
+                    <th className="pb-3 pt-3 pr-4 font-medium">Interest</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loans.slice(0, 5).map((loan, i) => (
+                    <tr key={loan.id} className={`border-b last:border-0 transition-colors hover:bg-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                      <td className="py-3 pl-4 text-gray-900">{loan.id.slice(0, 8)}</td>
+                      <td className="py-3 font-medium">{formatCurrency(loan.amount)}</td>
+                      <td className="py-3">
+                        <Badge variant="info">{loan.status}</Badge>
+                      </td>
+                      <td className="py-3 pr-4">{loan.interest_rate}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
         </CardContent>
       </Card>
     </div>

@@ -108,21 +108,22 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center gap-2 border-b px-6">
-          <div className="h-8 w-8 rounded-lg bg-[#486B6D]" />
-          <span className="text-xl font-bold text-[#486B6D]">MarketPay</span>
+          <div className="h-8 w-8 rounded-lg bg-primary" />
+          <span className="text-xl font-bold text-primary">MarketPay</span>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main navigation">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => handleNav(item.href)}
+              aria-current={pathname === item.href ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 pathname === item.href
-                  ? "bg-[#486B6D]/10 text-[#486B6D]"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-primary/10 text-primary shadow-sm"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               )}
             >
               {item.icon}
@@ -133,7 +134,7 @@ export function Sidebar() {
 
         <div className="border-t p-4">
           <div className="mb-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#486B6D] text-sm font-medium text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
               {user?.name?.charAt(0) || "U"}
             </div>
             <div className="flex-1 truncate">

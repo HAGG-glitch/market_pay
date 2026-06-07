@@ -34,7 +34,7 @@ export default function VendorDashboard() {
             <CardTitle className="text-sm font-medium text-gray-500">Loan Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-[#486B6D]">
+            <p className="text-2xl font-bold text-primary">
               {activeLoan?.status || "N/A"}
             </p>
           </CardContent>
@@ -53,10 +53,10 @@ export default function VendorDashboard() {
 
       <div className="flex gap-3">
         <Link href="/loans/apply">
-          <Button size="lg">Apply for Loan</Button>
+          <Button size="lg" aria-label="Apply for a new loan">Apply for Loan</Button>
         </Link>
         <Link href="/payments">
-          <Button variant="outline" size="lg">View Payments</Button>
+          <Button variant="outline" size="lg" aria-label="View your payment history">View Payments</Button>
         </Link>
       </div>
 

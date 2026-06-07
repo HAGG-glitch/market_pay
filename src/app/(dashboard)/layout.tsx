@@ -31,7 +31,7 @@ export default function DashboardLayout({
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#486B6D] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -40,7 +40,7 @@ export default function DashboardLayout({
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <main className="min-h-screen w-full pt-16 md:ml-64 md:pt-0">
-        <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 animate-fade-in">
           {children}
         </div>
       </main>

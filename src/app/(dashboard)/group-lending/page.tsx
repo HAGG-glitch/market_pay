@@ -81,7 +81,7 @@ export default function GroupLendingPage() {
                 className="flex items-center justify-between rounded-lg border p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#486B6D]/10 text-sm font-medium text-[#486B6D]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
                     {member.name.charAt(0)}
                   </div>
                   <div>
@@ -110,7 +110,7 @@ export default function GroupLendingPage() {
         </CardContent>
       </Card>
 
-      <Button variant="outline" className="w-full">
+      <Button variant="outline" className="w-full" aria-label="Add a new member to this group">
         Add Member to Group
       </Button>
     </div>

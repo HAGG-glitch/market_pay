@@ -42,7 +42,7 @@ export default function LoanApplyPage() {
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-lg space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Apply for Loan</h1>
         <p className="text-gray-500">Complete the steps below</p>
@@ -54,7 +54,7 @@ export default function LoanApplyPage() {
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 step >= s
-                  ? "bg-[#486B6D] text-white"
+                  ? "bg-primary text-white"
                   : "bg-gray-100 text-gray-400"
               }`}
             >

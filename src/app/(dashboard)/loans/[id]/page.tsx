@@ -4,9 +4,7 @@ import { useParams } from "next/navigation";
 import { useLoan } from "@/hooks/use-loans";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import Link from "next/link";
 
 const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
   DRAFT: "default",
@@ -26,7 +24,7 @@ export default function LoanDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#486B6D] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -35,25 +33,17 @@ export default function LoanDetailPage() {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">Loan not found</h1>
-        <Link href="/loans">
-          <Button variant="outline">Back to Loans</Button>
-        </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/loans">
-          <Button variant="ghost" size="sm">&larr; Back</Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Loan {loan.id.slice(0, 8)}
-          </h1>
-          <p className="text-gray-500">Loan status tracker</p>
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Loan {loan.id.slice(0, 8)}
+        </h1>
+        <p className="text-gray-500">Loan status tracker</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -115,14 +105,14 @@ export default function LoanDetailPage() {
                     <div
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
                         isComplete
-                          ? "bg-[#486B6D] text-white"
+                          ? "bg-primary text-white"
                           : "bg-gray-100 text-gray-400"
-                      } ${isCurrent ? "ring-2 ring-[#486B6D] ring-offset-2" : ""}`}
+                      } ${isCurrent ? "ring-2 ring-primary ring-offset-2" : ""}`}
                     >
                       {i + 1}
                     </div>
                     <span className="text-xs text-gray-500">{s.replace("_", " ")}</span>
-                    {i < 5 && <div className={`h-px w-6 ${isComplete ? "bg-[#486B6D]" : "bg-gray-200"}`} />}
+                    {i < 5 && <div className={`h-px w-6 ${isComplete ? "bg-primary" : "bg-gray-200"}`} />}
                   </div>
                 );
               }

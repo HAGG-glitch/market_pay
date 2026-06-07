@@ -27,7 +27,7 @@ export default function VendorOnboardPage() {
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-lg space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Vendor Onboarding</h1>
         <p className="text-gray-500">KYC submission form</p>

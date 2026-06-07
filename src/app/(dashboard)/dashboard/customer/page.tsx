@@ -47,7 +47,7 @@ export default function CustomerDashboard() {
       </div>
 
       <Link href="/payments">
-        <Button size="lg" className="w-full">
+        <Button size="lg" className="w-full" aria-label="Go to payments page">
           Pay a Vendor
         </Button>
       </Link>
@@ -61,10 +61,10 @@ export default function CustomerDashboard() {
             <p className="text-sm text-gray-500">No payments yet.</p>
           ) : (
             <div className="space-y-2">
-              {payments.slice(0, 5).map((p) => (
+              {payments.slice(0, 5).map((p, i) => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className={`flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">
@@ -73,12 +73,12 @@ export default function CustomerDashboard() {
                     <p className="text-xs text-gray-500">{formatDate(p.created_at)}</p>
                   </div>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       p.status === "SUCCESS"
-                        ? "bg-green-100 text-green-800"
+                        ? "bg-green-100 text-green-700"
                         : p.status === "FAILED"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
                     }`}
                   >
                     {p.status}

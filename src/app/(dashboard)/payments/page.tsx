@@ -63,6 +63,7 @@ export default function PaymentsPage() {
               className="w-full"
               size="lg"
               disabled={makePayment.isPending}
+              aria-label="Submit payment"
             >
               {makePayment.isPending ? "Processing..." : "Pay Now"}
             </Button>
@@ -89,19 +90,19 @@ export default function PaymentsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-gray-500">
-                    <th className="pb-3 font-medium">ID</th>
-                    <th className="pb-3 font-medium">Vendor</th>
-                    <th className="pb-3 font-medium">Amount</th>
-                    <th className="pb-3 font-medium">Fee</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Date</th>
+                  <tr className="border-b bg-gray-50 text-left text-gray-500">
+                    <th className="pb-3 pt-3 pl-4 font-medium">ID</th>
+                    <th className="pb-3 pt-3 font-medium">Vendor</th>
+                    <th className="pb-3 pt-3 font-medium">Amount</th>
+                    <th className="pb-3 pt-3 font-medium">Fee</th>
+                    <th className="pb-3 pt-3 font-medium">Status</th>
+                    <th className="pb-3 pt-3 pr-4 font-medium">Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.map((p) => (
-                    <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="py-3 font-mono text-xs">
+                  {payments.map((p, i) => (
+                    <tr key={p.id} className={`border-b last:border-0 transition-colors hover:bg-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                      <td className="py-3 pl-4 font-mono text-xs">
                         {p.id.slice(0, 8)}...
                       </td>
                       <td className="py-3">{p.vendor_id.slice(0, 8)}...</td>
@@ -111,18 +112,18 @@ export default function PaymentsPage() {
                       <td className="py-3">{formatCurrency(p.fee)}</td>
                       <td className="py-3">
                         <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                             p.status === "SUCCESS"
-                              ? "bg-green-100 text-green-800"
+                              ? "bg-green-100 text-green-700"
                               : p.status === "FAILED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-yellow-100 text-yellow-700"
                           }`}
                         >
                           {p.status}
                         </span>
                       </td>
-                      <td className="py-3 text-gray-500">
+                      <td className="py-3 pr-4 text-gray-500">
                         {formatDate(p.created_at)}
                       </td>
                     </tr>

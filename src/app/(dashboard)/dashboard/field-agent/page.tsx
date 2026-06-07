@@ -46,7 +46,7 @@ export default function FieldAgentDashboard() {
               placeholder="+234 800 000 0000"
               required
             />
-            <Button type="submit" className="w-full" size="lg">
+            <Button type="submit" className="w-full" size="lg" aria-label="Start vendor onboarding process">
               Start Onboarding
             </Button>
           </form>
@@ -55,8 +55,12 @@ export default function FieldAgentDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card
-          className="cursor-pointer transition-shadow hover:shadow-md"
+          className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
           onClick={() => router.push("/group-lending")}
+          role="button"
+          tabIndex={0}
+          aria-label="Go to group management"
+          onKeyDown={(e) => e.key === "Enter" && router.push("/group-lending")}
         >
           <CardHeader>
             <CardTitle>Group Management</CardTitle>
@@ -67,7 +71,12 @@ export default function FieldAgentDashboard() {
             </p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer transition-shadow hover:shadow-md">
+        <Card
+          className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+          role="button"
+          tabIndex={0}
+          aria-label="Review KYC submissions"
+        >
           <CardHeader>
             <CardTitle>KYC Submissions</CardTitle>
           </CardHeader>

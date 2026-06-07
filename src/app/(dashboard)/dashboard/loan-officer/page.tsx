@@ -52,10 +52,11 @@ export default function LoanOfficerDashboard() {
                         updateStatus.mutate({ id: loan.id, status: "APPROVED" })
                       }
                       disabled={updateStatus.isPending}
+                      aria-label={`Approve loan ${loan.id.slice(0, 8)}`}
                     >
                       Approve
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" aria-label={`Review details for loan ${loan.id.slice(0, 8)}`}>
                       Review Details
                     </Button>
                   </div>
