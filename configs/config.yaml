@@ -1,0 +1,139 @@
+app:
+  name: "MarketPay"
+  version: "1.0.0"
+  env: "development"
+  port: 8080
+  grpc_port: 9090
+  debug: true
+
+database:
+  host: "postgres"
+  port: 5432
+  name: "marketpay"
+  user: "marketpay"
+  password: "marketpay_secret"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 10
+  conn_max_lifetime: "5m"
+
+redis:
+  host: "redis"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+
+jwt:
+  access_secret: "marketpay-access-secret-key-super-secure-2024"
+  refresh_secret: "marketpay-refresh-secret-key-super-secure-2024"
+  access_expiry: "15m"
+  refresh_expiry: "168h"  # 7 days
+
+monime:
+  base_url: "https://api.monime.com/v1"
+  api_key: "monime-api-key-placeholder"
+  webhook_secret: "monime-webhook-secret"
+  timeout: "30s"
+
+ussd:
+  session_timeout: "5m"
+  max_sessions_per_hour: 10
+
+notifications:
+  sms:
+    provider: "africas_talking"
+    api_key: "africas-talking-key"
+    username: "marketpay"
+  whatsapp:
+    provider: "twilio"
+    account_sid: "twilio-account-sid"
+    auth_token: "twilio-auth-token"
+    from: "whatsapp:+14155238886"
+  email:
+    provider: "smtp"
+    host: "smtp.gmail.com"
+    port: 587
+    user: "noreply@marketpay.sl"
+    password: "email-password"
+
+credit_score:
+  transaction_volume_weight: 30
+  transaction_consistency_weight: 20
+  repayment_history_weight: 30
+  market_association_weight: 10
+  kyc_completeness_weight: 10
+  group_bonus: 5
+  min_score: 50
+  auto_approve_score: 75
+
+loans:
+  emergency_advance:
+    min_amount: 50
+    max_amount: 500
+    term_weeks: 2
+    interest_rate: 0.05
+    auto_approve: true
+  starter_loan:
+    min_amount: 500
+    max_amount: 2000
+    term_weeks_min: 4
+    term_weeks_max: 8
+    interest_rate: 0.08
+    auto_approve: false
+  growth_loan:
+    min_amount: 2000
+    max_amount: 5000
+    term_weeks: 12
+    interest_rate: 0.10
+    auto_approve: false
+    declining_balance: true
+
+repayment:
+  grace_period_days: 7
+  default_penalty_rate: 0.02  # 2% per week
+
+payment:
+  fee_rate: 0.01  # 1%
+
+outbox:
+  worker_interval: "10s"
+  max_retries: 3
+  retry_intervals:
+    - "0s"
+    - "1h"
+    - "24h"
+
+cors:
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:3001"
+    - "http://localhost:4200"
+    - "http://localhost:5173"
+    - "http://localhost:8081"
+    - "http://127.0.0.1:3000"
+    - "http://127.0.0.1:5173"
+    - "https://admin.marketpay.sl"
+    - "https://app.marketpay.sl"
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "PATCH"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Request-ID"
+    - "Accept"
+    - "Origin"
+
+rate_limit:
+  requests_per_minute: 60
+  burst: 10
+
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"

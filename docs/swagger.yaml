@@ -1,0 +1,927 @@
+basePath: /api/v1
+definitions:
+  github_com_marketpay_backend_internal_auth_application.TokenPair:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+    type: object
+  github_com_marketpay_backend_internal_loan_domain_model.FundingSource:
+    enum:
+    - MFI_PARTNER
+    - NGO_FUND
+    - BANK_PARTNER
+    type: string
+    x-enum-varnames:
+    - FundingSourceMFIPartner
+    - FundingSourceNGOFund
+    - FundingSourceBankPartner
+  github_com_marketpay_backend_internal_loan_domain_model.InterestType:
+    enum:
+    - FLAT
+    - DECLINING_BALANCE
+    type: string
+    x-enum-varnames:
+    - InterestTypeFlat
+    - InterestTypeDecliningBalance
+  github_com_marketpay_backend_internal_loan_domain_model.Loan:
+    properties:
+      commission_paid:
+        type: boolean
+      commission_rate:
+        type: number
+      created_at:
+        type: string
+      credit_score_at_time:
+        type: number
+      currency:
+        type: string
+      disbursed_at:
+        type: string
+      due_date:
+        type: string
+      frequency:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.RepaymentFrequency'
+      funded_by:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.FundingSource'
+      group_id:
+        type: string
+      id:
+        type: string
+      interest_rate:
+        type: number
+      interest_type:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.InterestType'
+      loan_type:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.LoanType'
+      monime_reference:
+        type: string
+      outstanding_amount:
+        type: number
+      partner_id:
+        type: string
+      principal_amount:
+        type: number
+      rejection_reason:
+        type: string
+      review_note:
+        type: string
+      reviewed_by:
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.RepaymentSchedule'
+        type: array
+      state:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.LoanState'
+      term_weeks:
+        type: integer
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      vendor_id:
+        type: string
+    type: object
+  github_com_marketpay_backend_internal_loan_domain_model.LoanState:
+    enum:
+    - DRAFT
+    - PENDING_REVIEW
+    - AUTO_APPROVED
+    - UNDER_REVIEW
+    - APPROVED
+    - REJECTED
+    - DISBURSED
+    - ACTIVE
+    - CLOSED
+    - DEFAULTED
+    type: string
+    x-enum-varnames:
+    - LoanStateDraft
+    - LoanStatePendingReview
+    - LoanStateAutoApproved
+    - LoanStateUnderReview
+    - LoanStateApproved
+    - LoanStateRejected
+    - LoanStateDisbursed
+    - LoanStateActive
+    - LoanStateClosed
+    - LoanStateDefaulted
+  github_com_marketpay_backend_internal_loan_domain_model.LoanType:
+    enum:
+    - EMERGENCY_ADVANCE
+    - STARTER_LOAN
+    - GROWTH_LOAN
+    type: string
+    x-enum-varnames:
+    - LoanTypeEmergencyAdvance
+    - LoanTypeStarterLoan
+    - LoanTypeGrowthLoan
+  github_com_marketpay_backend_internal_loan_domain_model.RepaymentFrequency:
+    enum:
+    - BIWEEKLY
+    - MONTHLY
+    type: string
+    x-enum-varnames:
+    - RepaymentFrequencyBiweekly
+    - RepaymentFrequencyMonthly
+  github_com_marketpay_backend_internal_loan_domain_model.RepaymentSchedule:
+    properties:
+      amount_paid:
+        type: number
+      created_at:
+        type: string
+      due_date:
+        type: string
+      id:
+        type: string
+      installment_no:
+        type: integer
+      interest_due:
+        type: number
+      is_grace_period:
+        type: boolean
+      loan_id:
+        type: string
+      paid_at:
+        type: string
+      penalty_amount:
+        type: number
+      principal_due:
+        type: number
+      status:
+        type: string
+      total_due:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  github_com_marketpay_backend_internal_shared_domain_model.KYCStatus:
+    enum:
+    - PENDING
+    - VERIFIED
+    - REJECTED
+    type: string
+    x-enum-varnames:
+    - KYCPending
+    - KYCVerified
+    - KYCRejected
+  github_com_marketpay_backend_internal_shared_domain_model.Role:
+    enum:
+    - SUPER_ADMIN
+    - ADMIN
+    - LOAN_OFFICER
+    - FIELD_AGENT
+    - VENDOR
+    - CUSTOMER
+    - MFI_PARTNER
+    type: string
+    x-enum-varnames:
+    - RoleSuperAdmin
+    - RoleAdmin
+    - RoleLoanOfficer
+    - RoleFieldAgent
+    - RoleVendor
+    - RoleCustomer
+    - RoleMFIPartner
+  github_com_marketpay_backend_internal_vendors_domain_model.MarketAssociation:
+    properties:
+      created_at:
+        type: string
+      district:
+        type: string
+      id:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_marketpay_backend_internal_vendors_domain_model.Vendor:
+    properties:
+      address:
+        type: string
+      business_name:
+        type: string
+      business_type:
+        type: string
+      created_at:
+        type: string
+      credit_score:
+        type: number
+      date_of_birth:
+        type: string
+      first_name:
+        type: string
+      first_transaction_at:
+        type: string
+      group_id:
+        type: string
+      id:
+        type: string
+      kyc_status:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_shared_domain_model.KYCStatus'
+      kyc_verified_at:
+        type: string
+      last_name:
+        type: string
+      market_association:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_vendors_domain_model.MarketAssociation'
+      market_association_id:
+        type: string
+      national_id_number:
+        type: string
+      national_id_type:
+        type: string
+      phone:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_vendors_domain_model.VendorStatus'
+      transaction_count:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  github_com_marketpay_backend_internal_vendors_domain_model.VendorStatus:
+    enum:
+    - PENDING
+    - ACTIVE
+    - SUSPENDED
+    - BLACKLISTED
+    type: string
+    x-enum-varnames:
+    - VendorStatusPending
+    - VendorStatusActive
+    - VendorStatusSuspended
+    - VendorStatusBlacklist
+  github_com_marketpay_backend_pkg_pagination.Response-github_com_marketpay_backend_internal_loan_domain_model_Loan:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  internal_auth_interfaces_http.loginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_auth_interfaces_http.refreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  internal_auth_interfaces_http.registerRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_shared_domain_model.Role'
+    required:
+    - email
+    - password
+    - phone
+    - role
+    type: object
+  internal_loan_interfaces_http.applyLoanRequest:
+    properties:
+      amount:
+        type: number
+      frequency:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.RepaymentFrequency'
+      funded_by:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.FundingSource'
+      group_id:
+        type: string
+      loan_type:
+        $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.LoanType'
+      partner_id:
+        type: string
+      term_weeks:
+        type: integer
+    required:
+    - amount
+    - frequency
+    - funded_by
+    - loan_type
+    - term_weeks
+    type: object
+  internal_loan_interfaces_http.disburseLoanRequest:
+    properties:
+      monime_reference:
+        type: string
+    required:
+    - monime_reference
+    type: object
+  internal_loan_interfaces_http.rejectLoanRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  internal_loan_interfaces_http.reviewLoanRequest:
+    properties:
+      note:
+        type: string
+    type: object
+  internal_repayment_interfaces_http.repayRequest:
+    properties:
+      amount:
+        type: number
+      loan_id:
+        type: string
+      monime_reference:
+        type: string
+    required:
+    - amount
+    - loan_id
+    type: object
+  internal_vendors_interfaces_http.createVendorRequest:
+    properties:
+      address:
+        type: string
+      business_name:
+        type: string
+      business_type:
+        type: string
+      date_of_birth:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      market_association_id:
+        type: string
+      national_id_number:
+        type: string
+      national_id_type:
+        type: string
+      phone:
+        type: string
+      pin:
+        type: string
+    required:
+    - date_of_birth
+    - first_name
+    - last_name
+    - market_association_id
+    - national_id_number
+    - national_id_type
+    - phone
+    - pin
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: engineering@marketpay.sl
+    name: MarketPay Engineering
+  description: MarketPay microfinance and USSD payment platform for informal market
+    vendors in Sierra Leone.
+  license:
+    name: MIT
+  title: MarketPay API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth_interfaces_http.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_auth_application.TokenPair'
+      summary: Login with email and password
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout and revoke all tokens
+      tags:
+      - auth
+  /auth/me:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user info
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth_interfaces_http.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_auth_application.TokenPair'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth_interfaces_http.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /loans:
+    get:
+      parameters:
+      - description: Loan state
+        in: query
+        name: state
+        type: string
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_pkg_pagination.Response-github_com_marketpay_backend_internal_loan_domain_model_Loan'
+      security:
+      - BearerAuth: []
+      summary: List loans by state
+      tags:
+      - loans
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Loan application
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_loan_interfaces_http.applyLoanRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+      security:
+      - BearerAuth: []
+      summary: Apply for a loan
+      tags:
+      - loans
+  /loans/{id}:
+    get:
+      parameters:
+      - description: Loan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+      security:
+      - BearerAuth: []
+      summary: Get loan by ID
+      tags:
+      - loans
+  /loans/{id}/approve:
+    put:
+      parameters:
+      - description: Loan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Review note
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_loan_interfaces_http.reviewLoanRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+      security:
+      - BearerAuth: []
+      summary: Approve a loan
+      tags:
+      - loans
+  /loans/{id}/disburse:
+    put:
+      parameters:
+      - description: Loan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Monime reference
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_loan_interfaces_http.disburseLoanRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+      security:
+      - BearerAuth: []
+      summary: Disburse an approved loan
+      tags:
+      - loans
+  /loans/{id}/reject:
+    put:
+      parameters:
+      - description: Loan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection reason
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_loan_interfaces_http.rejectLoanRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+      security:
+      - BearerAuth: []
+      summary: Reject a loan
+      tags:
+      - loans
+  /loans/{id}/schedule:
+    get:
+      parameters:
+      - description: Loan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.RepaymentSchedule'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Get repayment schedule for a loan
+      tags:
+      - loans
+  /loans/vendor/{vendor_id}:
+    get:
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: vendor_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_pkg_pagination.Response-github_com_marketpay_backend_internal_loan_domain_model_Loan'
+      security:
+      - BearerAuth: []
+      summary: List loans for a specific vendor
+      tags:
+      - loans
+  /repayments:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Repayment data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_repayment_interfaces_http.repayRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_loan_domain_model.Loan'
+      security:
+      - BearerAuth: []
+      summary: Make a loan repayment
+      tags:
+      - repayments
+  /repayments/loans/{id}/default:
+    put:
+      parameters:
+      - description: Loan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark a loan as defaulted
+      tags:
+      - repayments
+  /reports/default-rate:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Default rate report
+      tags:
+      - reports
+  /reports/disbursement-volume:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Disbursement volume by month
+      tags:
+      - reports
+  /reports/officer-queue:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Loan officer pending review queue
+      tags:
+      - reports
+  /reports/partner-summary:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Partner loans and commission summary
+      tags:
+      - reports
+  /reports/portfolio:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Portfolio outstanding report
+      tags:
+      - reports
+  /reports/repayment-rate:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Repayment rate report
+      tags:
+      - reports
+  /reports/vendor-distribution:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Vendor distribution by market
+      tags:
+      - reports
+  /ussd:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: Session ID
+        in: formData
+        name: sessionId
+        required: true
+        type: string
+      - description: Service Code
+        in: formData
+        name: serviceCode
+        required: true
+        type: string
+      - description: Phone Number
+        in: formData
+        name: phoneNumber
+        required: true
+        type: string
+      - description: Accumulated input
+        in: formData
+        name: text
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: CON ... or END ...
+          schema:
+            type: string
+      summary: Handle USSD request from gateway
+      tags:
+      - ussd
+  /vendors:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all vendors
+      tags:
+      - vendors
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Vendor data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_vendors_interfaces_http.createVendorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_vendors_domain_model.Vendor'
+      security:
+      - BearerAuth: []
+      summary: Register a new vendor
+      tags:
+      - vendors
+  /vendors/{id}:
+    get:
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_vendors_domain_model.Vendor'
+      security:
+      - BearerAuth: []
+      summary: Get vendor by ID
+      tags:
+      - vendors
+  /vendors/{id}/eligibility:
+    get:
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Check vendor loan eligibility
+      tags:
+      - vendors
+  /vendors/{id}/kyc/approve:
+    put:
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_marketpay_backend_internal_vendors_domain_model.Vendor'
+      security:
+      - BearerAuth: []
+      summary: Approve vendor KYC
+      tags:
+      - vendors
+  /vendors/market-associations:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_marketpay_backend_internal_vendors_domain_model.MarketAssociation'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all market associations
+      tags:
+      - vendors
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

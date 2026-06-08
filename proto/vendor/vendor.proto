@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package vendor.v1;
+
+option go_package = "github.com/marketpay/backend/proto/vendor";
+
+service VendorService {
+  rpc GetVendor(GetVendorRequest) returns (VendorResponse);
+  rpc CheckEligibility(EligibilityRequest) returns (EligibilityResponse);
+  rpc GetCreditScore(CreditScoreRequest) returns (CreditScoreResponse);
+}
+
+message GetVendorRequest {
+  string vendor_id = 1;
+}
+
+message EligibilityRequest {
+  string vendor_id = 1;
+}
+
+message CreditScoreRequest {
+  string vendor_id = 1;
+}
+
+message VendorResponse {
+  string vendor_id   = 1;
+  string first_name  = 2;
+  string last_name   = 3;
+  string phone       = 4;
+  string kyc_status  = 5;
+  string status      = 6;
+  double credit_score = 7;
+}
+
+message EligibilityResponse {
+  bool   eligible = 1;
+  string reason   = 2;
+}
+
+message CreditScoreResponse {
+  double total_score             = 1;
+  bool   is_eligible             = 2;
+  bool   can_auto_approve        = 3;
+  double transaction_volume_score = 4;
+  double repayment_history_score  = 5;
+  double kyc_completeness_score   = 6;
+}

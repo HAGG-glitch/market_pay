@@ -1,0 +1,175 @@
+package http
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	authapp "github.com/marketpay/backend/internal/auth/application"
+	shared "github.com/marketpay/backend/internal/shared/domain/model"
+	apperrors "github.com/marketpay/backend/pkg/errors"
+	"github.com/marketpay/backend/pkg/middleware"
+	"github.com/google/uuid"
+)
+
+// Handler handles auth HTTP requests.
+type Handler struct {
+	authSvc *authapp.AuthService
+}
+
+// NewHandler constructs an auth Handler.
+func NewHandler(authSvc *authapp.AuthService) *Handler {
+	return &Handler{authSvc: authSvc}
+}
+
+// RegisterRoutes mounts auth routes onto a router group.
+func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
+	auth := rg.Group("/auth")
+	{
+		auth.POST("/register", h.Register)
+		auth.POST("/login", h.Login)
+		auth.POST("/refresh", h.Refresh)
+		auth.POST("/logout", authMiddleware, h.Logout)
+		auth.GET("/me", authMiddleware, h.Me)
+	}
+}
+
+// registerRequest is the registration payload.
+type registerRequest struct {
+	Email    string      `json:"email" binding:"required,email"`
+	Phone    string      `json:"phone" binding:"required"`
+	Password string      `json:"password" binding:"required,min=8"`
+	Role     shared.Role `json:"role" binding:"required"`
+}
+
+// loginRequest is the login payload.
+type loginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+// refreshRequest is the refresh payload.
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// Register godoc
+// @Summary Register a new user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body registerRequest true "Registration data"
+// @Success 201 {object} map[string]interface{}
+// @Router /auth/register [post]
+func (h *Handler) Register(c *gin.Context) {
+	var req registerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.authSvc.Register(c.Request.Context(), authapp.RegisterInput{
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Password: req.Password,
+		Role:     req.Role,
+	})
+	if err != nil {
+		status := apperrors.HTTPStatus(err)
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":    user.ID,
+		"email": user.Email,
+		"role":  user.Role,
+	})
+}
+
+// Login godoc
+// @Summary Login with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body loginRequest true "Login credentials"
+// @Success 200 {object} authapp.TokenPair
+// @Router /auth/login [post]
+func (h *Handler) Login(c *gin.Context) {
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	pair, err := h.authSvc.Login(c.Request.Context(), authapp.LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		status := apperrors.HTTPStatus(err)
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, pair)
+}
+
+// Refresh godoc
+// @Summary Refresh access token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body refreshRequest true "Refresh token"
+// @Success 200 {object} authapp.TokenPair
+// @Router /auth/refresh [post]
+func (h *Handler) Refresh(c *gin.Context) {
+	var req refreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	pair, err := h.authSvc.Refresh(c.Request.Context(), req.RefreshToken)
+	if err != nil {
+		status := apperrors.HTTPStatus(err)
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, pair)
+}
+
+// Logout godoc
+// @Summary Logout and revoke all tokens
+// @Tags auth
+// @Security BearerAuth
+// @Success 200 {object} map[string]string
+// @Router /auth/logout [post]
+func (h *Handler) Logout(c *gin.Context) {
+	userIDStr := middleware.GetUserID(c)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+
+	if err := h.authSvc.Logout(c.Request.Context(), userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+}
+
+// Me godoc
+// @Summary Get current user info
+// @Tags auth
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /auth/me [get]
+func (h *Handler) Me(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"user_id": middleware.GetUserID(c),
+		"role":    middleware.GetRole(c),
+	})
+}

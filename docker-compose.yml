@@ -1,0 +1,117 @@
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: marketpay_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marketpay
+      POSTGRES_PASSWORD: marketpay_secret
+      POSTGRES_DB: marketpay
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketpay -d marketpay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7
+    container_name: marketpay_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Migrate (runs once, then exits) ───────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+    container_name: marketpay_migrate
+    command: ["./migrate", "-config", "configs/config.yaml"]
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: marketpay
+      DATABASE_USER: marketpay
+      DATABASE_PASSWORD: marketpay_secret
+      DATABASE_SSL_MODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ── API Server ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+    container_name: marketpay_api
+    command: ["./api", "-config", "configs/config.yaml"]
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      APP_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: marketpay
+      DATABASE_USER: marketpay
+      DATABASE_PASSWORD: marketpay_secret
+      DATABASE_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── Outbox Worker ─────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile
+    container_name: marketpay_worker
+    command: ["./worker", "-config", "configs/config.yaml"]
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: marketpay
+      DATABASE_USER: marketpay
+      DATABASE_PASSWORD: marketpay_secret
+      DATABASE_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

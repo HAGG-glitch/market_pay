@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option go_package = "github.com/marketpay/backend/proto/payment";
+
+import "google/protobuf/timestamp.proto";
+
+service PaymentService {
+  rpc InitiatePayment(InitiatePaymentRequest) returns (PaymentResponse);
+  rpc CompletePayment(CompletePaymentRequest) returns (PaymentResponse);
+  rpc GetPayment(GetPaymentRequest) returns (PaymentResponse);
+  rpc GetVendorPayments(GetVendorPaymentsRequest) returns (GetVendorPaymentsResponse);
+}
+
+message InitiatePaymentRequest {
+  string customer_id = 1;
+  string vendor_id   = 2;
+  double amount      = 3;
+  string description = 4;
+}
+
+message CompletePaymentRequest {
+  string payment_id        = 1;
+  string monime_reference  = 2;
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message GetVendorPaymentsRequest {
+  string vendor_id = 1;
+  int32  page      = 2;
+  int32  limit     = 3;
+}
+
+message PaymentResponse {
+  string payment_id        = 1;
+  string customer_id       = 2;
+  string vendor_id         = 3;
+  double amount            = 4;
+  double fee               = 5;
+  double net_amount        = 6;
+  string status            = 7;
+  string monime_reference  = 8;
+  string currency          = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message GetVendorPaymentsResponse {
+  repeated PaymentResponse payments = 1;
+  int64 total = 2;
+}

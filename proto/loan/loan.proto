@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package loan.v1;
+
+option go_package = "github.com/marketpay/backend/proto/loan";
+
+import "google/protobuf/timestamp.proto";
+
+// LoanService exposes loan operations over gRPC for internal service communication.
+service LoanService {
+  rpc ApplyForLoan(ApplyLoanRequest) returns (LoanResponse);
+  rpc GetLoan(GetLoanRequest) returns (LoanResponse);
+  rpc ApproveLoan(ApproveLoanRequest) returns (LoanResponse);
+  rpc RejectLoan(RejectLoanRequest) returns (LoanResponse);
+  rpc DisburseLoan(DisburseLoanRequest) returns (LoanResponse);
+  rpc GetSchedule(GetScheduleRequest) returns (GetScheduleResponse);
+  rpc GetVendorLoans(GetVendorLoansRequest) returns (GetVendorLoansResponse);
+}
+
+message ApplyLoanRequest {
+  string vendor_id  = 1;
+  string loan_type  = 2; // EMERGENCY_ADVANCE | STARTER_LOAN | GROWTH_LOAN
+  double amount     = 3;
+  int32  term_weeks = 4;
+  string frequency  = 5; // BIWEEKLY | MONTHLY
+  string funded_by  = 6;
+  string partner_id = 7;
+  string group_id   = 8;
+}
+
+message GetLoanRequest {
+  string loan_id = 1;
+}
+
+message ApproveLoanRequest {
+  string loan_id    = 1;
+  string officer_id = 2;
+  string note       = 3;
+}
+
+message RejectLoanRequest {
+  string loan_id    = 1;
+  string officer_id = 2;
+  string reason     = 3;
+}
+
+message DisburseLoanRequest {
+  string loan_id          = 1;
+  string monime_reference = 2;
+}
+
+message GetScheduleRequest {
+  string loan_id = 1;
+}
+
+message GetVendorLoansRequest {
+  string vendor_id = 1;
+  int32  page      = 2;
+  int32  limit     = 3;
+}
+
+message LoanResponse {
+  string loan_id            = 1;
+  string vendor_id          = 2;
+  string loan_type          = 3;
+  string state              = 4;
+  double principal_amount   = 5;
+  double total_amount       = 6;
+  double outstanding_amount = 7;
+  double interest_rate      = 8;
+  string interest_type      = 9;
+  int32  term_weeks         = 10;
+  string frequency          = 11;
+  string currency           = 12;
+  google.protobuf.Timestamp created_at  = 13;
+  google.protobuf.Timestamp disbursed_at = 14;
+  google.protobuf.Timestamp due_date    = 15;
+}
+
+message ScheduleEntry {
+  string loan_id        = 1;
+  int32  installment_no = 2;
+  google.protobuf.Timestamp due_date = 3;
+  double principal_due  = 4;
+  double interest_due   = 5;
+  double total_due      = 6;
+  double amount_paid    = 7;
+  double penalty_amount = 8;
+  string status         = 9;
+}
+
+message GetScheduleResponse {
+  repeated ScheduleEntry schedules = 1;
+}
+
+message GetVendorLoansResponse {
+  repeated LoanResponse loans = 1;
+  int64 total = 2;
+}

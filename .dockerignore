@@ -1,0 +1,11 @@
+.git
+.gitignore
+*.md
+bin/
+coverage.out
+coverage.html
+*.test
+.env
+.env.*
+!configs/
+!migrations/
