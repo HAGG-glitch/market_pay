@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	authmodel "github.com/marketpay/backend/internal/auth/domain/model"
+	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	"gorm.io/gorm"
 )
 
@@ -47,6 +48,12 @@ func (r *UserRepo) FindByPhone(ctx context.Context, phone string) (*authmodel.Us
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *UserRepo) FindByRole(ctx context.Context, role shared.Role) ([]*authmodel.User, error) {
+	var users []*authmodel.User
+	err := r.db.WithContext(ctx).Where("role = ?", role).Find(&users).Error
+	return users, err
 }
 
 func (r *UserRepo) Update(ctx context.Context, user *authmodel.User) error {

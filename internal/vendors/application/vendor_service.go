@@ -170,3 +170,31 @@ func (s *VendorService) VerifyPIN(ctx context.Context, vendorID uuid.UUID, pin s
 func (s *VendorService) List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*vendormodel.Vendor, int64, error) {
 	return s.vendors.List(ctx, isDemo, fieldAgentID, offset, limit)
 }
+
+// AssignFieldAgent updates the field agent assigned to a vendor.
+func (s *VendorService) AssignFieldAgent(ctx context.Context, vendorID, fieldAgentID, actorID uuid.UUID, actorRole shared.Role) error {
+	vendor, err := s.vendors.FindByID(ctx, vendorID)
+	if err != nil || vendor == nil {
+		return apperrors.ErrNotFound("vendor")
+	}
+
+	vendor.FieldAgentID = &fieldAgentID
+
+	if err := s.vendors.Update(ctx, vendor); err != nil {
+		return apperrors.ErrInternalServer(err)
+	}
+
+	payload := map[string]interface{}{
+		"vendor_id":      vendor.ID.String(),
+		"field_agent_id": fieldAgentID.String(),
+		"actor_id":       actorID.String(),
+		"actor_role":     string(actorRole),
+	}
+	_ = s.events.Publish(ctx, "FieldAgentAssigned", vendor.ID.String(), payload)
+
+	s.log.Info("field agent assigned to vendor",
+		zap.String("vendor_id", vendor.ID.String()),
+		zap.String("field_agent_id", fieldAgentID.String()),
+	)
+	return nil
+}

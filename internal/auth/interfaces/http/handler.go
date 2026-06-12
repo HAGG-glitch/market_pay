@@ -7,6 +7,7 @@ import (
 	authapp "github.com/marketpay/backend/internal/auth/application"
 	vendorapp "github.com/marketpay/backend/internal/vendors/application"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
+	"github.com/marketpay/backend/pkg/democtx"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/middleware"
 	"github.com/google/uuid"
@@ -33,6 +34,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.Handler
 		auth.POST("/refresh", h.Refresh)
 		auth.POST("/logout", authMiddleware, h.Logout)
 		auth.GET("/me", authMiddleware, h.Me)
+		auth.GET("/users", authMiddleware, middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin, shared.RoleLoanOfficer), h.ListUsersByRole)
 	}
 }
 
@@ -228,4 +230,38 @@ func (h *Handler) Me(c *gin.Context) {
 		"is_demo":      user.IsDemo,
 		"display_name": user.DisplayName,
 	})
+}
+
+// ListUsersByRole retrieves users filtered by role query parameter.
+func (h *Handler) ListUsersByRole(c *gin.Context) {
+	roleStr := c.Query("role")
+	if roleStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role query parameter is required"})
+		return
+	}
+
+	role := shared.Role(roleStr)
+	isDemo := democtx.FromGin(c)
+
+	users, err := h.authSvc.ListUsersByRole(c.Request.Context(), role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var filtered []gin.H
+	for _, u := range users {
+		if u.IsDemo == isDemo {
+			filtered = append(filtered, gin.H{
+				"id":           u.ID.String(),
+				"email":        u.Email,
+				"phone":        u.Phone,
+				"role":         u.Role,
+				"display_name": u.DisplayName,
+				"is_demo":      u.IsDemo,
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, filtered)
 }

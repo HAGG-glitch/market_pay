@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Plus, Snowflake, RotateCcw, CheckCircle } from "lucide-react";
-import { getVendors, freezeVendor, unfreezeVendor, approveVendorKYC } from "@/lib/api/vendor.service";
+import { Plus, Snowflake, RotateCcw, CheckCircle, UserCog } from "lucide-react";
+import { getVendors, freezeVendor, unfreezeVendor, approveVendorKYC, assignFieldAgent, getFieldAgents } from "@/lib/api/vendor.service";
 import { useAuthStore } from "@/store/auth.store";
 import { UserRole } from "@/types";
 
@@ -20,10 +20,18 @@ export default function VendorsPage() {
   const role = user?.role as UserRole | undefined;
   const [freezeModal, setFreezeModal] = useState<{ id: string; name: string } | null>(null);
   const [freezeReason, setFreezeReason] = useState("");
+  const [assignModal, setAssignModal] = useState<{ id: string; name: string } | null>(null);
+  const [selectedFieldAgent, setSelectedFieldAgent] = useState("");
 
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["vendors"],
     queryFn: getVendors,
+  });
+
+  const { data: fieldAgents = [] } = useQuery({
+    queryKey: ["field-agents"],
+    queryFn: getFieldAgents,
+    enabled: !!assignModal,
   });
 
   const freezeMutation = useMutation({
@@ -43,6 +51,15 @@ export default function VendorsPage() {
   const approveKYCMutation = useMutation({
     mutationFn: (id: string) => approveVendorKYC(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vendors"] }),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ vendorId, agentId }: { vendorId: string; agentId: string }) => assignFieldAgent(vendorId, agentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      setAssignModal(null);
+      setSelectedFieldAgent("");
+    },
   });
 
   const isFrozen = (v: { kyc_status: string }) =>
@@ -113,6 +130,15 @@ export default function VendorsPage() {
                       {isManage && (
                         <td className="py-3 pr-4">
                           <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setAssignModal({ id: v.id, name: v.name })}
+                              title="Assign Field Agent"
+                              className="h-8 w-8 p-0 text-blue-600"
+                            >
+                              <UserCog size={16} />
+                            </Button>
                             {v.kyc_status === "PENDING" && (
                               <Button
                                 variant="ghost"
@@ -193,6 +219,50 @@ export default function VendorsPage() {
                 disabled={!freezeReason || freezeMutation.isPending}
               >
                 {freezeMutation.isPending ? "Freezing..." : "Confirm Freeze"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {assignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Assign Field Agent — {assignModal.name}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Select a field agent to assign to this vendor.
+            </p>
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700">Field Agent</label>
+              <select
+                className="mt-1 flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                value={selectedFieldAgent}
+                onChange={(e) => setSelectedFieldAgent(e.target.value)}
+              >
+                <option value="">Choose a field agent...</option>
+                {fieldAgents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.display_name || a.email || a.phone}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-4 flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => { setAssignModal(null); setSelectedFieldAgent(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() =>
+                  assignMutation.mutate({ vendorId: assignModal.id, agentId: selectedFieldAgent })
+                }
+                disabled={!selectedFieldAgent || assignMutation.isPending}
+              >
+                {assignMutation.isPending ? "Assigning..." : "Assign"}
               </Button>
             </div>
           </div>

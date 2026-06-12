@@ -21,6 +21,7 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*authmodel.User, error)
 	FindByEmail(ctx context.Context, email string) (*authmodel.User, error)
 	FindByPhone(ctx context.Context, phone string) (*authmodel.User, error)
+	FindByRole(ctx context.Context, role shared.Role) ([]*authmodel.User, error)
 	Update(ctx context.Context, user *authmodel.User) error
 	SaveRefreshToken(ctx context.Context, token *authmodel.RefreshToken) error
 	FindRefreshToken(ctx context.Context, token string) (*authmodel.RefreshToken, error)
@@ -232,4 +233,9 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user *authmodel.User) 
 // GetUserByID returns a user by ID.
 func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (*authmodel.User, error) {
 	return s.users.FindByID(ctx, id)
+}
+
+// ListUsersByRole returns all users with the given role.
+func (s *AuthService) ListUsersByRole(ctx context.Context, role shared.Role) ([]*authmodel.User, error) {
+	return s.users.FindByRole(ctx, role)
 }

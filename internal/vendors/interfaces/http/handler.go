@@ -89,6 +89,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 		vendors.PUT("/:id/freeze", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Freeze)
 
 		vendors.PUT("/:id/unfreeze", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Unfreeze)
+		vendors.PUT("/:id/field-agent", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.AssignFieldAgent)
 
 	}
 
@@ -131,6 +132,12 @@ type createVendorRequest struct {
 type freezeVendorRequest struct {
 
 	Reason string `json:"reason" binding:"required"`
+
+}
+
+type assignFieldAgentRequest struct {
+
+	FieldAgentID string `json:"field_agent_id" binding:"required"`
 
 }
 
@@ -499,6 +506,52 @@ func (h *Handler) Unfreeze(c *gin.Context) {
 }
 
 
+
+func (h *Handler) AssignFieldAgent(c *gin.Context) {
+
+	id, err := uuid.Parse(c.Param("id"))
+
+	if err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+
+		return
+
+	}
+
+	var req assignFieldAgentRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+		return
+
+	}
+
+	fieldAgentID, err := uuid.Parse(req.FieldAgentID)
+
+	if err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid field_agent_id"})
+
+		return
+
+	}
+
+	actorID, _ := uuid.Parse(middleware.GetUserID(c))
+
+	if err := h.vendorSvc.AssignFieldAgent(c.Request.Context(), id, fieldAgentID, actorID, middleware.GetRole(c)); err != nil {
+
+		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+
+		return
+
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "field agent assigned"})
+
+}
 
 // ListMarketAssociations godoc
 

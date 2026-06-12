@@ -1,6 +1,13 @@
 import apiClient from "./client";
 import type { PaginatedResponse, Vendor } from "@/types";
 
+export interface FieldAgentUser {
+  id: string;
+  email: string;
+  phone: string;
+  display_name: string;
+}
+
 interface BackendVendor {
   id: string;
   first_name: string;
@@ -73,5 +80,15 @@ export async function unfreezeVendor(id: string) {
 
 export async function approveVendorKYC(id: string) {
   const { data } = await apiClient.put(`/vendors/${id}/kyc/approve`);
+  return data;
+}
+
+export async function assignFieldAgent(vendorId: string, fieldAgentId: string) {
+  const { data } = await apiClient.put(`/vendors/${vendorId}/field-agent`, { field_agent_id: fieldAgentId });
+  return data;
+}
+
+export async function getFieldAgents() {
+  const { data } = await apiClient.get<FieldAgentUser[]>("/auth/users?role=FIELD_AGENT");
   return data;
 }
