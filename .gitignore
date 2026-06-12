@@ -1,0 +1,5 @@
+.env
+.env.*
+!.env.example
+
+keys/private_key.pem
