@@ -8,6 +8,7 @@ import (
 	paymentapp "github.com/marketpay/backend/internal/payment/application"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
+	"github.com/marketpay/backend/pkg/democtx"
 	"github.com/marketpay/backend/pkg/middleware"
 	"github.com/marketpay/backend/pkg/pagination"
 )
@@ -25,6 +26,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 	p := rg.Group("/payments")
 	p.Use(auth)
 	{
+		p.GET("", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin), h.List)
 		p.POST("", middleware.RequireRoles(shared.RoleCustomer, shared.RoleVendor), h.Initiate)
 		p.PUT("/:id/complete", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin), h.Complete)
 		p.GET("/vendor/:vendor_id", h.GetVendorPayments)
@@ -39,6 +41,18 @@ type initiatePaymentRequest struct {
 
 type completePaymentRequest struct {
 	MonimeReference string `json:"monime_reference" binding:"required"`
+}
+
+func (h *Handler) List(c *gin.Context) {
+	params := pagination.FromQuery(c)
+	isDemo := democtx.FromGin(c)
+
+	payments, total, err := h.svc.List(c.Request.Context(), isDemo, params.Offset(), params.Limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, pagination.NewResponse(payments, total, params))
 }
 
 func (h *Handler) Initiate(c *gin.Context) {
@@ -63,6 +77,7 @@ func (h *Handler) Initiate(c *gin.Context) {
 		CustomerID: customerID,
 		VendorID:   vendorID,
 		Amount:     req.Amount,
+		IsDemo:     democtx.FromGin(c),
 	})
 	if err != nil {
 		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})

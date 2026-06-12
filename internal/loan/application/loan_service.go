@@ -23,7 +23,7 @@ type LoanRepository interface {
 	SaveSchedules(ctx context.Context, schedules []loanmodel.RepaymentSchedule) error
 	FindSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) ([]loanmodel.RepaymentSchedule, error)
 	UpdateSchedule(ctx context.Context, schedule *loanmodel.RepaymentSchedule) error
-	ListByState(ctx context.Context, state loanmodel.LoanState, offset, limit int) ([]*loanmodel.Loan, int64, error)
+	ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error)
 }
 
 // AuditRepository persists audit log entries.
@@ -91,6 +91,7 @@ type ApplyInput struct {
 	GroupID   *uuid.UUID
 	FundedBy  loanmodel.FundingSource
 	PartnerID *uuid.UUID
+	IsDemo    bool
 }
 
 // Apply creates a loan application and triggers auto-approval if eligible.
@@ -127,6 +128,7 @@ func (s *LoanService) Apply(ctx context.Context, input ApplyInput) (*loanmodel.L
 		CreditScoreAtTime: score,
 		FundedBy:          input.FundedBy,
 		PartnerID:         input.PartnerID,
+		IsDemo:            input.IsDemo,
 	}
 	loan.TotalAmount = loan.CalculateTotalAmount()
 	loan.OutstandingAmount = loan.TotalAmount
@@ -157,13 +159,16 @@ func (s *LoanService) Apply(ctx context.Context, input ApplyInput) (*loanmodel.L
 		NewState:   string(loan.State),
 	})
 
-	_ = s.events.Publish(ctx, "LoanApplied", loan.ID.String(), map[string]interface{}{
+	payload := map[string]interface{}{
 		"loan_id":   loan.ID.String(),
 		"vendor_id": loan.VendorID.String(),
 		"amount":    loan.PrincipalAmount,
 		"type":      string(loan.LoanType),
 		"state":     string(loan.State),
-	})
+		"is_demo":   loan.IsDemo,
+	}
+	_ = s.events.Publish(ctx, "LoanApplied", loan.ID.String(), payload)
+	_ = s.events.Publish(ctx, "LoanRequested", loan.ID.String(), payload)
 
 	return loan, nil
 }

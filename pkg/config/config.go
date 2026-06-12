@@ -75,10 +75,11 @@ type JWTConfig struct {
 }
 
 type MonimeConfig struct {
-	BaseURL       string        `mapstructure:"base_url"`
-	APIKey        string        `mapstructure:"api_key"`
-	WebhookSecret string        `mapstructure:"webhook_secret"`
-	Timeout       time.Duration `mapstructure:"timeout"`
+	BaseURL          string        `mapstructure:"base_url"`
+	APIKey           string        `mapstructure:"api_key"`
+	WebhookSecret    string        `mapstructure:"webhook_secret"`
+	RSAPrivateKeyPEM string        `mapstructure:"rsa_private_key_pem"`
+	Timeout          time.Duration `mapstructure:"timeout"`
 }
 
 type USSDConfig struct {

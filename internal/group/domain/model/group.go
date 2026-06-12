@@ -27,8 +27,10 @@ type Group struct {
 	Description string      `gorm:"type:text" json:"description"`
 	Status      GroupStatus `gorm:"type:varchar(50);not null;default:'ACTIVE'" json:"status"`
 	LeaderID    uuid.UUID   `gorm:"type:uuid;not null" json:"leader_id"`
-	FreezeReason string     `gorm:"type:text" json:"freeze_reason,omitempty"`
-	Members     []GroupMember `gorm:"foreignKey:GroupID" json:"members,omitempty"`
+	FreezeReason string        `gorm:"type:text" json:"freeze_reason,omitempty"`
+	FieldAgentID *uuid.UUID    `gorm:"type:uuid;index" json:"field_agent_id,omitempty"`
+	IsDemo       bool          `gorm:"default:false" json:"is_demo"`
+	Members      []GroupMember `gorm:"foreignKey:GroupID" json:"members,omitempty"`
 }
 
 // GroupMember links a vendor to a group.

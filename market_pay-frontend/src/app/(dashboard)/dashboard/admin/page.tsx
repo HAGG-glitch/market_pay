@@ -1,44 +1,54 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLoans } from "@/hooks/use-loans";
+import { useDashboardSummary } from "@/hooks/use-reporting";
 import { formatCurrency } from "@/lib/utils";
 
 export default function AdminDashboard() {
-  const { data: loansData } = useLoans();
-  const loans = loansData?.data || [];
-  const pendingReview = loans.filter((l) => l.status === "PENDING_REVIEW").length;
+  const { data: summary } = useDashboardSummary();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-500">Loan portfolio management</p>
+        <p className="text-gray-500">Operations overview</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Loans</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Vendors</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{loans.length}</p>
+            <p className="text-2xl font-bold">{summary?.total_vendors ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Pending Review</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Active Loans</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">{pendingReview}</p>
+            <p className="text-2xl font-bold">{summary?.active_loans ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Disbursed</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Portfolio</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(loans.reduce((s, l) => s + l.amount, 0))}</p>
+            <p className="text-2xl font-bold">
+              {formatCurrency(summary?.portfolio_value ?? 0)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Overdue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-red-600">
+              {summary?.overdue_loans ?? 0}
+            </p>
           </CardContent>
         </Card>
       </div>

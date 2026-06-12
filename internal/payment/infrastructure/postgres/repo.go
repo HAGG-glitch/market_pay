@@ -54,6 +54,18 @@ func (r *PaymentRepo) FindByCustomerID(ctx context.Context, customerID uuid.UUID
 	return payments, count, err
 }
 
+func (r *PaymentRepo) FindAll(ctx context.Context, isDemo bool, offset, limit int) ([]*paymentmodel.Payment, int64, error) {
+	var payments []*paymentmodel.Payment
+	var count int64
+	r.db.WithContext(ctx).Model(&paymentmodel.Payment{}).Where("is_demo = ?", isDemo).Count(&count)
+	err := r.db.WithContext(ctx).
+		Where("is_demo = ?", isDemo).
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&payments).Error
+	return payments, count, err
+}
+
 func (r *PaymentRepo) Update(ctx context.Context, payment *paymentmodel.Payment) error {
 	return r.db.WithContext(ctx).Save(payment).Error
 }

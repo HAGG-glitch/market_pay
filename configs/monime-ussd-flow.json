@@ -1,0 +1,203 @@
+{
+  "version": "1.0",
+  "pages": [
+    {
+      "id": "mp_select_service",
+      "component": {
+        "type": "menu",
+        "label": "Welcome to MarketPay\nSelect service",
+        "items": [
+          { "label": "Register vendor", "value": "register_vendor" },
+          { "label": "Pay vendor", "value": "pay_vendor" },
+          { "label": "Transaction history", "value": "transaction_history" },
+          { "label": "Check balance", "value": "balance_check" },
+          { "label": "Loan eligibility", "value": "loan_eligibility" },
+          { "label": "Loan application", "value": "loan_application" },
+          { "label": "Exit", "value": "exit" }
+        ]
+      },
+      "on_done": {
+        "action": "next",
+        "session_context": {
+          "mutations": {
+            "selected_service": "$(page.mp_select_service.value)"
+          }
+        }
+      }
+    },
+    {
+      "id": "mp_collect_vendor_name",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter vendor full name",
+        "min_length": 2,
+        "max_length": 50
+      },
+      "options": { "skip": "$(sc.selected_service != \"register_vendor\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "registration_vendor_name": "$(page.mp_collect_vendor_name.value)" } }
+      }
+    },
+    {
+      "id": "mp_collect_market_name",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter market name",
+        "min_length": 2,
+        "max_length": 50
+      },
+      "options": { "skip": "$(sc.selected_service != \"register_vendor\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://localhost:8080/api/v1/monime/exchange",
+        "session_context": { "mutations": { "registration_market_name": "$(page.mp_collect_market_name.value)" } }
+      }
+    },
+    {
+      "id": "mp_show_vendor_registration_result",
+      "component": {
+        "type": "display",
+        "label": "$(data.message)"
+      },
+      "options": { "skip": "$(sc.selected_service != \"register_vendor\")" }
+    },
+    {
+      "id": "mp_collect_payment_vendor_code",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter vendor code (e.g. MP12345)",
+        "min_length": 7,
+        "max_length": 12,
+        "pattern": "^MP[0-9]{5,10}$"
+      },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "payment_vendor_code": "$(page.mp_collect_payment_vendor_code.value)" } }
+      }
+    },
+    {
+      "id": "mp_collect_payment_amount",
+      "component": {
+        "type": "prompt",
+        "data_type": "integer",
+        "label": "Enter amount in SLE",
+        "min_value": 1,
+        "max_value": 10000000
+      },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "payment_amount": "$(page.mp_collect_payment_amount.value)" } }
+      }
+    },
+    {
+      "id": "mp_confirm_payment_receipt",
+      "component": {
+        "type": "menu",
+        "label": "Confirm payment?",
+        "items": [
+          { "label": "Confirm & pay", "value": "confirm" },
+          { "label": "Cancel", "value": "cancel" }
+        ]
+      },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://localhost:8080/api/v1/monime/exchange",
+        "session_context": {
+          "mutations": {
+            "payment_confirmed": "$(page.mp_confirm_payment_receipt.value == \"confirm\")",
+            "payment_send_sms_receipt": "false"
+          }
+        }
+      }
+    },
+    {
+      "id": "mp_show_payment_result_sms",
+      "component": { "type": "display", "label": "Payment of SLE $(data.amount) sent to $(data.vendor_code).\nRef: $(data.reference)" },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" }
+    },
+    {
+      "id": "mp_show_payment_result_no_sms",
+      "component": { "type": "display", "label": "Payment of SLE $(data.amount) sent to $(data.vendor_code).\nRef: $(data.reference)" },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" }
+    },
+    {
+      "id": "mp_show_payment_cancelled",
+      "component": { "type": "display", "label": "Payment cancelled" },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" }
+    },
+    {
+      "id": "mp_balance_exchange",
+      "component": { "type": "dynamic", "url": "https://localhost:8080/api/v1/monime/exchange" },
+      "options": { "skip": "$(sc.selected_service != \"balance_check\")" }
+    },
+    {
+      "id": "mp_show_balance_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"balance_check\")" }
+    },
+    {
+      "id": "mp_loan_eligibility_exchange",
+      "component": { "type": "dynamic", "url": "https://localhost:8080/api/v1/monime/exchange" },
+      "options": { "skip": "$(sc.selected_service != \"loan_eligibility\")" }
+    },
+    {
+      "id": "mp_show_loan_eligibility_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"loan_eligibility\")" }
+    },
+    {
+      "id": "mp_collect_loan_amount",
+      "component": {
+        "type": "prompt",
+        "data_type": "integer",
+        "label": "Enter loan amount in SLE",
+        "min_value": 50,
+        "max_value": 5000000
+      },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "loan_amount": "$(page.mp_collect_loan_amount.value)" } }
+      }
+    },
+    {
+      "id": "mp_confirm_loan_application",
+      "component": {
+        "type": "menu",
+        "label": "Submit loan application?",
+        "items": [
+          { "label": "Submit", "value": "submit" },
+          { "label": "Cancel", "value": "cancel" }
+        ]
+      },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://localhost:8080/api/v1/monime/exchange",
+        "session_context": { "mutations": { "loan_confirmed": "$(page.mp_confirm_loan_application.value == \"submit\")" } }
+      }
+    },
+    {
+      "id": "mp_show_loan_application_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\")" }
+    },
+    {
+      "id": "mp_show_loan_application_cancelled",
+      "component": { "type": "display", "label": "Loan application cancelled" },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\")" }
+    },
+    {
+      "id": "mp_exit_service",
+      "component": { "type": "display", "label": "Thanks for using MarketPay." },
+      "options": { "skip": "$(sc.selected_service != \"exit\")" }
+    }
+  ]
+}

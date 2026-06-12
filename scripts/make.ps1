@@ -40,6 +40,7 @@ function Docker-Up {
     docker compose up --build -d
     Write-Host ""
     Write-Host "Services started:" -ForegroundColor Green
+    Write-Host "  Frontend -> http://localhost:3000"
     Write-Host "  API      -> http://localhost:8080"
     Write-Host "  Swagger  -> http://localhost:8080/swagger/index.html"
     Write-Host "  Health   -> http://localhost:8080/health"
@@ -55,7 +56,7 @@ function Docker-Down {
 }
 
 function Docker-Logs {
-    docker compose logs -f api worker
+    docker compose logs -f api worker frontend
 }
 
 function Docker-Clean {

@@ -10,7 +10,7 @@ type PaymentStatus string
 
 const (
 	PaymentStatusPending   PaymentStatus = "PENDING"
-	PaymentStatusCompleted PaymentStatus = "COMPLETED"
+	PaymentStatusCompleted PaymentStatus = "SUCCESS"
 	PaymentStatusFailed    PaymentStatus = "FAILED"
 	PaymentStatusRefunded  PaymentStatus = "REFUNDED"
 )
@@ -29,6 +29,7 @@ type Payment struct {
 	MonimeReference string        `gorm:"type:varchar(255);index" json:"monime_reference,omitempty"`
 	Description     string        `gorm:"type:text" json:"description,omitempty"`
 	Currency        string        `gorm:"type:varchar(10);not null;default:'SLE'" json:"currency"`
+	IsDemo          bool          `gorm:"default:false" json:"is_demo"`
 }
 
 // NewPayment creates a Payment with fee and net amount computed.

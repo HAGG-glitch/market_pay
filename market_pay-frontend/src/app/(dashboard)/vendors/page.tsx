@@ -1,20 +1,55 @@
 "use client";
 
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Snowflake, RotateCcw, CheckCircle } from "lucide-react";
+import { getVendors, freezeVendor, unfreezeVendor, approveVendorKYC } from "@/lib/api/vendor.service";
+import { useAuthStore } from "@/store/auth.store";
+import { UserRole } from "@/types";
 
-const mockVendors = [
-  { id: "v_001", name: "Grace Okafor", phone: "+234 801 234 5678", kyc_status: "VERIFIED", credit_score: 78 },
-  { id: "v_002", name: "Musa Bello", phone: "+234 802 345 6789", kyc_status: "VERIFIED", credit_score: 82 },
-  { id: "v_003", name: "Chioma Eze", phone: "+234 803 456 7890", kyc_status: "PENDING", credit_score: 45 },
-  { id: "v_004", name: "Segun Adeleke", phone: "+234 804 567 8901", kyc_status: "VERIFIED", credit_score: 60 },
-  { id: "v_005", name: "Amina Yusuf", phone: "+234 805 678 9012", kyc_status: "REJECTED", credit_score: 30 },
-];
+const canManage: UserRole[] = [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 export default function VendorsPage() {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const role = user?.role as UserRole | undefined;
+  const [freezeModal, setFreezeModal] = useState<{ id: string; name: string } | null>(null);
+  const [freezeReason, setFreezeReason] = useState("");
+
+  const { data: vendors = [], isLoading } = useQuery({
+    queryKey: ["vendors"],
+    queryFn: getVendors,
+  });
+
+  const freezeMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => freezeVendor(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      setFreezeModal(null);
+      setFreezeReason("");
+    },
+  });
+
+  const unfreezeMutation = useMutation({
+    mutationFn: (id: string) => unfreezeVendor(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vendors"] }),
+  });
+
+  const approveKYCMutation = useMutation({
+    mutationFn: (id: string) => approveVendorKYC(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vendors"] }),
+  });
+
+  const isFrozen = (v: { kyc_status: string }) =>
+    v.kyc_status === "SUSPENDED" || v.kyc_status === "BLACKLISTED";
+
+  const isManage = role ? canManage.includes(role) : false;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -32,67 +67,137 @@ export default function VendorsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Vendors ({mockVendors.length})</CardTitle>
+          <CardTitle>All Vendors ({vendors.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left text-gray-500">
-                  <th className="pb-3 pt-3 pl-4 font-medium">Name</th>
-                  <th className="pb-3 pt-3 font-medium">Phone</th>
-                  <th className="pb-3 pt-3 font-medium">KYC Status</th>
-                  <th className="pb-3 pt-3 font-medium">Credit Score</th>
-                  <th className="pb-3 pt-3 pr-4 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {mockVendors.map((v, i) => (
-                  <tr key={v.id} className={`border-b last:border-0 transition-colors hover:bg-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                    <td className="py-3 pl-4 font-medium text-gray-900">{v.name}</td>
-                    <td className="py-3 text-gray-600">{v.phone}</td>
-                    <td className="py-3">
-                      <Badge
-                        variant={
-                          v.kyc_status === "VERIFIED"
-                            ? "success"
-                            : v.kyc_status === "PENDING"
-                            ? "warning"
-                            : "danger"
-                        }
-                      >
-                        {v.kyc_status}
-                      </Badge>
-                    </td>
-                    <td className="py-3">
-                      <span
-                        className={`font-medium ${
-                          v.credit_score >= 70
-                            ? "text-green-600"
-                            : v.credit_score >= 50
-                            ? "text-yellow-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {v.credit_score}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <Link
-                        href={`/vendors/${v.id}`}
-                        className="text-primary hover:underline font-medium"
-                        aria-label={`View vendor ${v.name}`}
-                      >
-                        View
-                      </Link>
-                    </td>
+          {isLoading ? (
+            <p className="text-sm text-gray-500">Loading vendors...</p>
+          ) : vendors.length === 0 ? (
+            <p className="text-sm text-gray-500">No vendors in this mode yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-left text-gray-500">
+                    <th className="pb-3 pt-3 pl-4 font-medium">Name</th>
+                    <th className="pb-3 pt-3 font-medium">Phone</th>
+                    <th className="pb-3 pt-3 font-medium">KYC Status</th>
+                    <th className="pb-3 pt-3 font-medium">Credit Score</th>
+                    {isManage && <th className="pb-3 pt-3 pr-4 font-medium">Actions</th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {vendors.map((v, i) => (
+                    <tr
+                      key={v.id}
+                      className={`border-b last:border-0 transition-colors hover:bg-gray-100 ${
+                        i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                      }`}
+                    >
+                      <td className="py-3 pl-4 font-medium text-gray-900">{v.name}</td>
+                      <td className="py-3 text-gray-600">{v.phone}</td>
+                      <td className="py-3">
+                        <Badge
+                          variant={
+                            v.kyc_status === "VERIFIED"
+                              ? "success"
+                              : v.kyc_status === "PENDING"
+                              ? "warning"
+                              : "danger"
+                          }
+                        >
+                          {v.kyc_status}
+                        </Badge>
+                      </td>
+                      <td className="py-3">{v.credit_score}</td>
+                      {isManage && (
+                        <td className="py-3 pr-4">
+                          <div className="flex gap-1">
+                            {v.kyc_status === "PENDING" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => approveKYCMutation.mutate(v.id)}
+                                disabled={approveKYCMutation.isPending}
+                                title="Approve KYC"
+                                className="h-8 w-8 p-0 text-green-600"
+                              >
+                                <CheckCircle size={16} />
+                              </Button>
+                            )}
+                            {isFrozen(v) ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => unfreezeMutation.mutate(v.id)}
+                                disabled={unfreezeMutation.isPending}
+                                title="Unfreeze"
+                                className="h-8 w-8 p-0 text-amber-600"
+                              >
+                                <RotateCcw size={16} />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFreezeModal({ id: v.id, name: v.name })}
+                                title="Freeze"
+                                className="h-8 w-8 p-0 text-red-600"
+                              >
+                                <Snowflake size={16} />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {freezeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Freeze {freezeModal.name}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              This will suspend the vendor&apos;s account.
+            </p>
+            <div className="mt-4">
+              <Input
+                id="freezeReason"
+                label="Reason"
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                placeholder="Enter reason for freezing"
+                required
+              />
+            </div>
+            <div className="mt-4 flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => { setFreezeModal(null); setFreezeReason(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() =>
+                  freezeMutation.mutate({ id: freezeModal.id, reason: freezeReason })
+                }
+                disabled={!freezeReason || freezeMutation.isPending}
+              >
+                {freezeMutation.isPending ? "Freezing..." : "Confirm Freeze"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

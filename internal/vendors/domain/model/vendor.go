@@ -49,6 +49,12 @@ type Vendor struct {
 	FirstTransactionAt  *time.Time         `json:"first_transaction_at,omitempty"`
 	CreditScore         float64            `gorm:"default:0" json:"credit_score"`
 	GroupID             *uuid.UUID         `gorm:"type:uuid;index" json:"group_id,omitempty"`
+	VendorCode          string             `gorm:"type:varchar(20);uniqueIndex" json:"vendor_code,omitempty"`
+	FieldAgentID        *uuid.UUID         `gorm:"type:uuid;index" json:"field_agent_id,omitempty"`
+	IsDemo              bool               `gorm:"default:false" json:"is_demo"`
+	FrozenAt            *time.Time         `json:"frozen_at,omitempty"`
+	FrozenBy            *uuid.UUID         `gorm:"type:uuid" json:"frozen_by,omitempty"`
+	FreezeReason        string             `gorm:"type:text" json:"freeze_reason,omitempty"`
 }
 
 // FullName returns the vendor's full name.

@@ -48,8 +48,8 @@ func (m *mockLoanRepo) FindSchedulesByLoanID(ctx context.Context, loanID uuid.UU
 func (m *mockLoanRepo) UpdateSchedule(ctx context.Context, s *loanmodel.RepaymentSchedule) error {
 	return m.Called(ctx, s).Error(0)
 }
-func (m *mockLoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, offset, limit int) ([]*loanmodel.Loan, int64, error) {
-	args := m.Called(ctx, state, offset, limit)
+func (m *mockLoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error) {
+	args := m.Called(ctx, state, isDemo, offset, limit)
 	return args.Get(0).([]*loanmodel.Loan), args.Get(1).(int64), args.Error(2)
 }
 

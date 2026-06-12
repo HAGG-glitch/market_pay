@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
@@ -75,6 +77,23 @@ import (
 
 	// Reporting
 	reporthttp "github.com/marketpay/backend/internal/reporting/interfaces/http"
+
+	// Audit
+	audithttp "github.com/marketpay/backend/internal/audit/interfaces/http"
+
+	// Monime gateway
+	monimeinfra "github.com/marketpay/backend/internal/monime/infrastructure"
+	monimemodel "github.com/marketpay/backend/internal/monime/domain/model"
+
+	// Monime Exchange
+	monimeexchangeapp "github.com/marketpay/backend/internal/monime/exchange"
+	monimehttp "github.com/marketpay/backend/internal/monime/interfaces/http"
+
+	// Notifications
+	notifhttp "github.com/marketpay/backend/internal/notification/interfaces/http"
+
+	"github.com/marketpay/backend/pkg/monimeexchange"
+	"github.com/marketpay/backend/pkg/realtime"
 )
 
 // @title MarketPay API
@@ -144,7 +163,6 @@ func main() {
 	// ── Auth ──────────────────────────────────────────────────────────────
 	userRepo    := authpg.NewUserRepo(db)
 	authSvc     := authapp.NewAuthService(userRepo, cfg.JWT, log)
-	authHandler := authhttp.NewHandler(authSvc)
 	jwtMW       := mw.AuthMiddleware(authSvc)
 
 	// ── Rate limiter ──────────────────────────────────────────────────────
@@ -154,6 +172,7 @@ func main() {
 	vendorRepo    := vendorpg.NewVendorRepo(db)
 	vendorSvc     := vendorapp.NewVendorService(vendorRepo, outboxPub, log)
 	vendorHandler := vendorhttp.NewHandler(vendorSvc)
+	authHandler   := authhttp.NewHandler(authSvc, vendorSvc)
 
 	// ── Credit Score ──────────────────────────────────────────────────────
 	scoreRepo := scorepg.NewScoreRepo(db)
@@ -175,9 +194,14 @@ func main() {
 	groupSvc     := groupapp.NewGroupService(groupRepo, outboxPub, log)
 	groupHandler := grouphttp.NewHandler(groupSvc)
 
+	// ── Monime Adapter ────────────────────────────────────────────────────
+	monimeAdapter := monimeinfra.NewMonimeAdapter(cfg.Monime, log)
+
+	monimeCollect := &monimeCollectorAdapter{adapter: monimeAdapter}
+
 	// ── Payment ───────────────────────────────────────────────────────────
 	paymentRepo    := paymentpg.NewPaymentRepo(db)
-	paymentSvc     := paymentapp.NewPaymentService(paymentRepo, outboxPub, log)
+	paymentSvc     := paymentapp.NewPaymentService(paymentRepo, outboxPub, monimeCollect, log)
 	paymentHandler := paymenthttp.NewHandler(paymentSvc)
 
 	// ── Ledger ────────────────────────────────────────────────────────────
@@ -198,6 +222,41 @@ func main() {
 
 	// ── Reporting ─────────────────────────────────────────────────────────
 	reportHandler := reporthttp.NewHandler(db)
+	auditHandler  := audithttp.NewHandler(db)
+
+	// ── Realtime / Notifications ──────────────────────────────────────────
+	eventHub := realtime.NewHub()
+	inAppNotifier := monimeexchangeapp.NewInAppNotifier(db, eventHub)
+	notifHandler := notifhttp.NewHandler(db, eventHub)
+
+	// ── Monime USSD Exchange ────────────────────────────────────────────────
+	monimeWebhook := monimehttp.NewWebhookHandler(db, paymentSvc, monimeAdapter)
+
+	var monimeHandler *monimehttp.Handler
+	pemKey := os.Getenv("MONIME_RSA_PRIVATE_KEY")
+	if pemKey == "" {
+		if keyFile := os.Getenv("MONIME_RSA_KEY_FILE"); keyFile != "" {
+			if b, err := os.ReadFile(keyFile); err == nil {
+				pemKey = string(b)
+			}
+		}
+	}
+	if pemKey != "" || cfg.Monime.RSAPrivateKeyPEM != "" {
+		keyPEM := pemKey
+		if keyPEM == "" {
+			keyPEM = cfg.Monime.RSAPrivateKeyPEM
+		}
+		crypto, err := monimeexchange.NewCrypto([]byte(keyPEM))
+		if err != nil {
+			log.Warn("monime exchange crypto init failed", zap.Error(err))
+		} else {
+			exchangeSvc := monimeexchangeapp.NewService(db, crypto, vendorSvc, loanSvc, paymentSvc, inAppNotifier, log.Logger)
+			monimeHandler = monimehttp.NewHandler(exchangeSvc)
+			log.Info("monime exchange endpoint enabled")
+		}
+	} else {
+		log.Warn("MONIME_RSA_PRIVATE_KEY not set — exchange endpoint disabled")
+	}
 
 	// ── Gin ───────────────────────────────────────────────────────────────
 	if cfg.IsProduction() {
@@ -209,6 +268,7 @@ func main() {
 	router.Use(requestid.New())
 	router.Use(mw.SecurityHeaders())
 	router.Use(rateLimiter.Limit())
+	router.Use(mw.DemoMode())
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CORS.AllowedOrigins,
 		AllowMethods:     cfg.CORS.AllowedMethods,
@@ -245,6 +305,13 @@ func main() {
 	groupHandler.RegisterRoutes(v1, jwtMW)
 	paymentHandler.RegisterRoutes(v1, jwtMW)
 	reportHandler.RegisterRoutes(v1, jwtMW)
+	auditHandler.RegisterRoutes(v1, jwtMW)
+	notifHandler.RegisterRoutes(v1, jwtMW)
+	monimeWebhook.RegisterRoutes(v1)
+
+	if monimeHandler != nil {
+		monimeHandler.RegisterRoutes(v1)
+	}
 
 	// USSD — rate limited separately, no JWT
 	ussdGroup := v1.Group("")
@@ -357,6 +424,28 @@ func newUSSDLoanAdapter(svc *loanapp.LoanService) *ussdLoanAdapter {
 
 func (a *ussdLoanAdapter) ApplyUSSD(ctx context.Context, phone, loanType string, amount float64) (string, error) {
 	return fmt.Sprintf("Loan application submitted. Type: %s. Amount: %.2f SLE. You will receive an SMS shortly.", loanType, amount), nil
+}
+
+// monimeCollectorAdapter adapts MonimeAdapter to paymentapp.MonimeCollector.
+type monimeCollectorAdapter struct {
+	adapter *monimeinfra.MonimeAdapter
+}
+
+func (a *monimeCollectorAdapter) Collect(ctx context.Context, phone, amount string) (string, error) {
+	var amtFloat float64
+	fmt.Sscanf(amount, "%f", &amtFloat)
+	req := monimemodel.CollectionRequest{
+		Reference:   "pay-" + uuid.New().String()[:12],
+		Phone:       phone,
+		Amount:      amtFloat,
+		Currency:    "SLE",
+		Description: "MarketPay payment collection",
+	}
+	resp, err := a.adapter.Collect(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return resp.ExternalRef, nil
 }
 
 type ussdPaymentAdapter struct {

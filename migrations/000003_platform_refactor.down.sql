@@ -1,0 +1,24 @@
+DROP TABLE IF EXISTS monime_exchange_sessions;
+DROP TABLE IF EXISTS in_app_notifications;
+DROP TABLE IF EXISTS freeze_history;
+
+ALTER TABLE payments DROP COLUMN IF EXISTS is_demo;
+ALTER TABLE loans DROP COLUMN IF EXISTS is_demo;
+ALTER TABLE groups DROP COLUMN IF EXISTS is_demo;
+ALTER TABLE partners DROP COLUMN IF EXISTS is_demo;
+ALTER TABLE customers DROP COLUMN IF EXISTS is_demo;
+
+ALTER TABLE vendors DROP COLUMN IF EXISTS freeze_reason;
+ALTER TABLE vendors DROP COLUMN IF EXISTS frozen_by;
+ALTER TABLE vendors DROP COLUMN IF EXISTS frozen_at;
+ALTER TABLE vendors DROP COLUMN IF EXISTS field_agent_id;
+ALTER TABLE vendors DROP COLUMN IF EXISTS vendor_code;
+ALTER TABLE vendors DROP COLUMN IF EXISTS is_demo;
+
+ALTER TABLE users DROP COLUMN IF EXISTS field_agent_id;
+ALTER TABLE users DROP COLUMN IF EXISTS display_name;
+ALTER TABLE users DROP COLUMN IF EXISTS is_demo;
+
+ALTER TABLE notifications DROP COLUMN IF EXISTS title;
+ALTER TABLE notifications DROP COLUMN IF EXISTS is_read;
+ALTER TABLE notifications DROP COLUMN IF EXISTS is_demo;

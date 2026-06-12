@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	groupmodel "github.com/marketpay/backend/internal/group/domain/model"
+	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/logger"
 	"go.uber.org/zap"
@@ -18,7 +19,8 @@ type GroupRepository interface {
 	Update(ctx context.Context, group *groupmodel.Group) error
 	AddMember(ctx context.Context, member *groupmodel.GroupMember) error
 	RemoveMember(ctx context.Context, groupID, vendorID uuid.UUID) error
-	List(ctx context.Context, offset, limit int) ([]*groupmodel.Group, int64, error)
+	List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*groupmodel.Group, int64, error)
+	LogFreezeHistory(ctx context.Context, entityType string, entityID, actorID uuid.UUID, action, reason, actorRole string, isDemo bool) error
 }
 
 // EventPublisher publishes domain events.
@@ -40,25 +42,28 @@ func NewGroupService(groups GroupRepository, events EventPublisher, log *logger.
 
 // CreateGroupInput holds group creation data.
 type CreateGroupInput struct {
-	Name        string
-	Description string
-	LeaderID    uuid.UUID
+	Name         string
+	Description  string
+	LeaderID     uuid.UUID
+	FieldAgentID *uuid.UUID
+	IsDemo       bool
 }
 
 // Create creates a new lending group.
 func (s *GroupService) Create(ctx context.Context, input CreateGroupInput) (*groupmodel.Group, error) {
 	group := &groupmodel.Group{
-		Name:        input.Name,
-		Description: input.Description,
-		Status:      groupmodel.GroupStatusActive,
-		LeaderID:    input.LeaderID,
+		Name:         input.Name,
+		Description:  input.Description,
+		Status:       groupmodel.GroupStatusActive,
+		LeaderID:     input.LeaderID,
+		FieldAgentID: input.FieldAgentID,
+		IsDemo:       input.IsDemo,
 	}
 
 	if err := s.groups.Create(ctx, group); err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
 
-	// Add leader as first member
 	member := &groupmodel.GroupMember{
 		GroupID:  group.ID,
 		VendorID: input.LeaderID,
@@ -67,6 +72,12 @@ func (s *GroupService) Create(ctx context.Context, input CreateGroupInput) (*gro
 	if err := s.groups.AddMember(ctx, member); err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
+
+	_ = s.events.Publish(ctx, "GroupCreated", group.ID.String(), map[string]interface{}{
+		"group_id": group.ID.String(),
+		"name":     group.Name,
+		"is_demo":  group.IsDemo,
+	})
 
 	s.log.Info("group created", zap.String("group_id", group.ID.String()))
 	return group, nil
@@ -79,7 +90,6 @@ func (s *GroupService) AddMember(ctx context.Context, groupID, vendorID uuid.UUI
 		return apperrors.ErrNotFound("group")
 	}
 
-	// Reload members
 	if group.IsFull() {
 		return apperrors.ErrGroupFull
 	}
@@ -96,7 +106,7 @@ func (s *GroupService) AddMember(ctx context.Context, groupID, vendorID uuid.UUI
 }
 
 // FreezeGroup freezes a group due to a member default.
-func (s *GroupService) FreezeGroup(ctx context.Context, groupID uuid.UUID, reason string) error {
+func (s *GroupService) FreezeGroup(ctx context.Context, groupID uuid.UUID, actorID uuid.UUID, actorRole shared.Role, reason string) error {
 	group, err := s.groups.FindByID(ctx, groupID)
 	if err != nil {
 		return apperrors.ErrNotFound("group")
@@ -110,8 +120,36 @@ func (s *GroupService) FreezeGroup(ctx context.Context, groupID uuid.UUID, reaso
 	_ = s.events.Publish(ctx, "GroupFrozen", group.ID.String(), map[string]interface{}{
 		"group_id": group.ID.String(),
 		"reason":   reason,
+		"is_demo":  group.IsDemo,
+	})
+	_ = s.events.Publish(ctx, "AccountFrozen", group.ID.String(), map[string]interface{}{
+		"group_id": group.ID.String(),
+		"reason":   reason,
+		"is_demo":  group.IsDemo,
 	})
 
+	_ = s.groups.LogFreezeHistory(ctx, "group", groupID, actorID, "FREEZE", reason, string(actorRole), group.IsDemo)
+	return nil
+}
+
+// UnfreezeGroup reactivates a frozen group.
+func (s *GroupService) UnfreezeGroup(ctx context.Context, groupID uuid.UUID, actorID uuid.UUID, actorRole shared.Role) error {
+	group, err := s.groups.FindByID(ctx, groupID)
+	if err != nil {
+		return apperrors.ErrNotFound("group")
+	}
+
+	group.Unfreeze()
+	if err := s.groups.Update(ctx, group); err != nil {
+		return apperrors.ErrInternalServer(err)
+	}
+
+	_ = s.events.Publish(ctx, "AccountUnfrozen", group.ID.String(), map[string]interface{}{
+		"group_id": group.ID.String(),
+		"is_demo":  group.IsDemo,
+	})
+
+	_ = s.groups.LogFreezeHistory(ctx, "group", groupID, actorID, "UNFREEZE", "", string(actorRole), group.IsDemo)
 	return nil
 }
 
@@ -124,7 +162,7 @@ func (s *GroupService) GetByID(ctx context.Context, id uuid.UUID) (*groupmodel.G
 	return group, nil
 }
 
-// List returns paginated groups.
-func (s *GroupService) List(ctx context.Context, offset, limit int) ([]*groupmodel.Group, int64, error) {
-	return s.groups.List(ctx, offset, limit)
+// List returns paginated groups scoped by demo mode.
+func (s *GroupService) List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*groupmodel.Group, int64, error) {
+	return s.groups.List(ctx, isDemo, fieldAgentID, offset, limit)
 }

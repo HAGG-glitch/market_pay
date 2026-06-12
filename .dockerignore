@@ -2,6 +2,7 @@
 .gitignore
 *.md
 bin/
+market_pay-frontend/
 coverage.out
 coverage.html
 *.test

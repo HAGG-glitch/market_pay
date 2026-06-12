@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/marketpay/backend/pkg/config"
 	"github.com/marketpay/backend/pkg/logger"
+	"github.com/marketpay/backend/pkg/notify"
 	"github.com/marketpay/backend/pkg/outbox"
 	sharedmodel "github.com/marketpay/backend/internal/shared/domain/model"
 )
@@ -48,65 +50,33 @@ func main() {
 
 	worker := outbox.NewWorker(db, log, retryDelays)
 
-	// Register event handlers
-	worker.Register("VendorRegistered", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling VendorRegistered event",
-			zap.String("event_id", event.ID.String()),
-			zap.String("aggregate_id", event.AggregateID),
-		)
-		// TODO: send SMS/WhatsApp notification via notification service
-		return nil
-	})
+	inAppHandler := func(eventType string) outbox.EventHandler {
+		return func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
+			isDemo := notify.IsDemoFromPayload(event.Payload)
+			return notify.DispatchOutboxEvent(ctx, db, eventType, event.Payload, isDemo)
+		}
+	}
 
-	worker.Register("LoanApproved", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling LoanApproved event",
-			zap.String("loan_id", event.AggregateID),
-		)
-		// TODO: send loan approval notification
-		return nil
-	})
-
-	worker.Register("LoanRejected", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling LoanRejected event",
-			zap.String("loan_id", event.AggregateID),
-		)
-		return nil
-	})
+	for _, evt := range []string{
+		"VendorCreated", "VendorRegistered", "GroupCreated",
+		"LoanApplied", "LoanRequested", "LoanApproved", "LoanRejected",
+		"RepaymentReceived", "AccountFrozen", "AccountUnfrozen",
+		"GroupFrozen", "PaymentCompleted",
+	} {
+		worker.Register(evt, inAppHandler(evt))
+	}
 
 	worker.Register("LoanDisbursed", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling LoanDisbursed event",
-			zap.String("loan_id", event.AggregateID),
-		)
-		// TODO: post journal entries via ledger service
-		return nil
-	})
-
-	worker.Register("RepaymentReceived", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling RepaymentReceived",
-			zap.String("loan_id", event.AggregateID),
-		)
-		return nil
+		log.Info("handling LoanDisbursed", zap.String("loan_id", event.AggregateID))
+		return inAppHandler("LoanDisbursed")(ctx, event)
 	})
 
 	worker.Register("LoanDefaulted", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling LoanDefaulted",
-			zap.String("loan_id", event.AggregateID),
-		)
-		return nil
-	})
-
-	worker.Register("GroupFrozen", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling GroupFrozen",
-			zap.String("group_id", event.AggregateID),
-		)
-		return nil
-	})
-
-	worker.Register("PaymentCompleted", func(ctx context.Context, event *sharedmodel.OutboxEvent) error {
-		log.Info("handling PaymentCompleted",
-			zap.String("payment_id", event.AggregateID),
-		)
-		return nil
+		log.Info("handling LoanDefaulted", zap.String("loan_id", event.AggregateID))
+		var data map[string]interface{}
+		_ = json.Unmarshal([]byte(event.Payload), &data)
+		isDemo, _ := data["is_demo"].(bool)
+		return notify.DispatchOutboxEvent(ctx, db, "LoanDefaulted", event.Payload, isDemo)
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

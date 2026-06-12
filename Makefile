@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 .PHONY: all build run test test-unit test-cover lint fmt vet \
         docker-build docker-up docker-down migrate-up migrate-down \
-        swagger clean deps tidy
+        swagger clean deps tidy quickstart
 
 # ── Variables ────────────────────────────────────────────────────────────────
 APP_NAME    := marketpay
@@ -68,13 +67,14 @@ docker-build:
 docker-up:
 	docker compose up --build -d
 	@echo "Services starting. API will be available at http://localhost:8080"
+	@echo "Frontend:   http://localhost:3000"
 	@echo "Swagger UI: http://localhost:8080/swagger/index.html"
 
 docker-down:
 	docker compose down
 
 docker-logs:
-	docker compose logs -f api worker
+	docker compose logs -f api worker frontend
 
 docker-clean:
 	docker compose down -v --remove-orphans
@@ -94,7 +94,7 @@ migrate-status:
 # ── Swagger ───────────────────────────────────────────────────────────────────
 swagger:
 	@which swag > /dev/null || (echo "Installing swag..." && go install github.com/swaggo/swag/cmd/swag@latest)
-	swag init -g cmd/api/main.go -o docs/
+	swag init -g cmd/api/main.go -o docs/ --parseDependency --parseInternal
 	@echo "Swagger docs generated → docs/"
 
 # ── Proto (requires protoc + plugins) ────────────────────────────────────────
@@ -121,62 +121,9 @@ quickstart:
 	@echo "✓ Postgres  → localhost:5432"
 	@echo "✓ Redis     → localhost:6379"
 	@echo "✓ API       → http://localhost:8080"
+	@echo "✓ Frontend  → http://localhost:3000"
 	@echo "✓ Swagger   → http://localhost:8080/swagger/index.html"
 	@echo ""
 	@echo "Default credentials:"
 	@echo "  Email:    superadmin@marketpay.sl"
-	@echo "  Password: password   (bcrypt placeholder)"
-=======
-.PHONY: help build run test clean deps fmt lint tidy
-
-help:
-	@echo "MarketPay USSD Service - Available Commands"
-	@echo ""
-	@echo "  make build       - Build the MarketPay USSD service"
-	@echo "  make run         - Run the MarketPay USSD service"
-	@echo "  make test        - Run all tests"
-	@echo "  make clean       - Clean build artifacts"
-	@echo "  make deps        - Download dependencies"
-	@echo "  make tidy        - Tidy go.mod and go.sum"
-	@echo "  make fmt         - Format code"
-	@echo "  make lint        - Run linter"
-	@echo ""
-
-build: deps
-	@echo "Building MarketPay USSD service..."
-	go build -o bin/marketpay-ussd main.go examples.go
-	@echo "Build complete: bin/marketpay-ussd"
-
-run: build
-	@echo "Running MarketPay USSD service..."
-	./bin/marketpay-ussd
-
-test:
-	@echo "Running tests..."
-	go test -v ./...
-
-clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf bin/
-	go clean
-
-deps:
-	@echo "Downloading dependencies..."
-	go mod download
-
-tidy:
-	@echo "Tidying go.mod..."
-	go mod tidy
-
-fmt:
-	@echo "Formatting code..."
-	go fmt ./...
-
-lint:
-	@echo "Running linter..."
-	golangci-lint run ./...
-
-examples: build
-	@echo "Running examples..."
-	./bin/marketpay-ussd --examples
->>>>>>> 36381e2c5538acddd881027bebc31d8897a8e7cb
+	@echo "  Password: password"

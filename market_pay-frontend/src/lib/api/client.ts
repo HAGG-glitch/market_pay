@@ -1,12 +1,14 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://api.marketpay.local",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
+    const mode = localStorage.getItem("marketpay_mode") || "demo";
+    config.headers["X-MarketPay-Mode"] = mode;
     const token = localStorage.getItem("marketpay_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -28,12 +30,16 @@ apiClient.interceptors.response.use(
             `${apiClient.defaults.baseURL}/auth/refresh`,
             { refresh_token: refreshToken }
           );
-          localStorage.setItem("marketpay_token", data.token);
-          original.headers.Authorization = `Bearer ${data.token}`;
+          localStorage.setItem("marketpay_token", data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem("marketpay_refresh", data.refresh_token);
+          }
+          original.headers.Authorization = `Bearer ${data.access_token}`;
           return apiClient(original);
         } catch {
           localStorage.removeItem("marketpay_token");
           localStorage.removeItem("marketpay_refresh");
+          localStorage.removeItem("marketpay_user");
           window.location.href = "/login";
         }
       }

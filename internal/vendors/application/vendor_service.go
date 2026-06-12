@@ -20,9 +20,10 @@ type VendorRepository interface {
 	FindByPhone(ctx context.Context, phone string) (*vendormodel.Vendor, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID) (*vendormodel.Vendor, error)
 	Update(ctx context.Context, vendor *vendormodel.Vendor) error
-	List(ctx context.Context, offset, limit int) ([]*vendormodel.Vendor, int64, error)
+	List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*vendormodel.Vendor, int64, error)
 	FindMarketAssociation(ctx context.Context, id uuid.UUID) (*vendormodel.MarketAssociation, error)
 	ListMarketAssociations(ctx context.Context) ([]*vendormodel.MarketAssociation, error)
+	LogFreezeHistory(ctx context.Context, entityType string, entityID, actorID uuid.UUID, action, reason, actorRole string, isDemo bool) error
 }
 
 // EventPublisher publishes domain events to the outbox.
@@ -56,6 +57,8 @@ type CreateVendorInput struct {
 	BusinessName        string
 	BusinessType        string
 	PIN                 string
+	IsDemo              bool
+	FieldAgentID        *uuid.UUID
 }
 
 // Create registers a new vendor.
@@ -93,18 +96,22 @@ func (s *VendorService) Create(ctx context.Context, input CreateVendorInput) (*v
 		KYCStatus:           shared.KYCPending,
 		Status:              vendormodel.VendorStatusPending,
 		PINHash:             string(pinHash),
+		IsDemo:              input.IsDemo,
+		FieldAgentID:        input.FieldAgentID,
 	}
 
 	if err := s.vendors.Create(ctx, vendor); err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
 
-	// Publish domain event
-	_ = s.events.Publish(ctx, "VendorRegistered", vendor.ID.String(), map[string]interface{}{
+	payload := map[string]interface{}{
 		"vendor_id": vendor.ID.String(),
 		"phone":     vendor.Phone,
 		"name":      vendor.FullName(),
-	})
+		"is_demo":   vendor.IsDemo,
+	}
+	_ = s.events.Publish(ctx, "VendorRegistered", vendor.ID.String(), payload)
+	_ = s.events.Publish(ctx, "VendorCreated", vendor.ID.String(), payload)
 
 	s.log.Info("vendor registered", zap.String("vendor_id", vendor.ID.String()))
 	return vendor, nil
@@ -159,7 +166,7 @@ func (s *VendorService) VerifyPIN(ctx context.Context, vendorID uuid.UUID, pin s
 	return nil
 }
 
-// List returns a paginated list of vendors.
-func (s *VendorService) List(ctx context.Context, offset, limit int) ([]*vendormodel.Vendor, int64, error) {
-	return s.vendors.List(ctx, offset, limit)
+// List returns a paginated list of vendors scoped by demo mode.
+func (s *VendorService) List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*vendormodel.Vendor, int64, error) {
+	return s.vendors.List(ctx, isDemo, fieldAgentID, offset, limit)
 }

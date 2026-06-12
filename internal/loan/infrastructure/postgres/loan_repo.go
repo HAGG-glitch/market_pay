@@ -69,14 +69,14 @@ func (r *LoanRepo) UpdateSchedule(ctx context.Context, schedule *loanmodel.Repay
 	return r.db.WithContext(ctx).Save(schedule).Error
 }
 
-func (r *LoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, offset, limit int) ([]*loanmodel.Loan, int64, error) {
+func (r *LoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error) {
 	var loans []*loanmodel.Loan
 	var count int64
 
-	r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("state = ?", state).Count(&count)
+	r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("state = ? AND is_demo = ?", state, isDemo).Count(&count)
 
 	err := r.db.WithContext(ctx).
-		Where("state = ?", state).
+		Where("state = ? AND is_demo = ?", state, isDemo).
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&loans).Error

@@ -34,6 +34,7 @@ monime:
   base_url: "https://api.monime.com/v1"
   api_key: "monime-api-key-placeholder"
   webhook_secret: "monime-webhook-secret"
+  rsa_private_key_pem: ""
   timeout: "30s"
 
 ussd:
@@ -128,6 +129,7 @@ cors:
     - "X-Request-ID"
     - "Accept"
     - "Origin"
+    - "X-MarketPay-Mode"
 
 rate_limit:
   requests_per_minute: 60

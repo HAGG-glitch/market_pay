@@ -31,22 +31,29 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Loans", href: "/loans", icon: <CreditCard size={18} /> },
     { label: "Payments", href: "/payments", icon: <Wallet size={18} /> },
     { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
+    { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
     { label: "Analytics", href: "/analytics", icon: <BarChart3 size={18} /> },
+    { label: "Audit Logs", href: "/audit-logs", icon: <FileText size={18} /> },
   ],
   ADMIN: [
     { label: "Dashboard", href: "/dashboard/admin", icon: <LayoutDashboard size={18} /> },
     { label: "Loans", href: "/loans", icon: <CreditCard size={18} /> },
     { label: "Payments", href: "/payments", icon: <Wallet size={18} /> },
+    { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
+    { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
     { label: "Analytics", href: "/analytics", icon: <BarChart3 size={18} /> },
   ],
   LOAN_OFFICER: [
     { label: "Dashboard", href: "/dashboard/loan-officer", icon: <LayoutDashboard size={18} /> },
     { label: "Loan Queue", href: "/loans", icon: <FileText size={18} /> },
     { label: "Applications", href: "/loans/apply", icon: <CreditCard size={18} /> },
+    { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
+    { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
   ],
   FIELD_AGENT: [
     { label: "Dashboard", href: "/dashboard/field-agent", icon: <LayoutDashboard size={18} /> },
     { label: "Onboard Vendor", href: "/vendors/onboard", icon: <Users size={18} /> },
+    { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
     { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
   ],
   VENDOR: [
@@ -63,6 +70,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   MFI_PARTNER: [
     { label: "Dashboard", href: "/dashboard/mfi-partner", icon: <LayoutDashboard size={18} /> },
     { label: "Portfolio", href: "/analytics", icon: <BarChart3 size={18} /> },
+    { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
   ],
 };
 
@@ -74,7 +82,13 @@ export function Sidebar() {
   const navItems = role ? roleNavItems[role] : [];
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const { logout: apiLogout } = await import("@/lib/api/auth.service");
+      await apiLogout();
+    } catch {
+      /* proceed with local logout */
+    }
     sessionStorage.setItem("marketpay_logout", "true");
     logout();
     router.push("/login");

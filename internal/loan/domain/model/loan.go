@@ -100,6 +100,7 @@ type Loan struct {
 	MonimeReference   string             `gorm:"type:varchar(255);index" json:"monime_reference,omitempty"`
 	Schedules         []RepaymentSchedule `gorm:"foreignKey:LoanID" json:"schedules,omitempty"`
 	Currency          string             `gorm:"type:varchar(10);not null;default:'SLE'" json:"currency"`
+	IsDemo            bool               `gorm:"default:false" json:"is_demo"`
 }
 
 // RepaymentSchedule is a single installment on a loan.

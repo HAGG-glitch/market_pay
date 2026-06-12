@@ -16,12 +16,12 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: ({
-      phone,
+      email,
       password,
     }: {
-      phone: string;
+      email: string;
       password: string;
-    }) => loginApi(phone, password),
+    }) => loginApi(email, password),
     onSuccess: (data) => {
       setAuth(data.user, data.token, data.refreshToken);
       router.push(`/dashboard/${roleToRoute(data.user.role)}`);

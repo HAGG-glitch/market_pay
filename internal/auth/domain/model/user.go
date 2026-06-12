@@ -17,6 +17,8 @@ type User struct {
 	Role          shared.Role     `gorm:"type:varchar(50);not null" json:"role"`
 	IsActive      bool            `gorm:"default:true" json:"is_active"`
 	IsVerified    bool            `gorm:"default:false" json:"is_verified"`
+	IsDemo        bool            `gorm:"default:false" json:"is_demo"`
+	DisplayName   string          `gorm:"type:varchar(255)" json:"display_name,omitempty"`
 	LastLoginAt   *time.Time      `json:"last_login_at,omitempty"`
 	RefreshTokens []RefreshToken  `gorm:"foreignKey:UserID" json:"-"`
 }

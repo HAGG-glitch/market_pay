@@ -61,8 +61,17 @@ type TokenPair struct {
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
+var selfRegisterRoles = map[shared.Role]bool{
+	shared.RoleCustomer: true,
+	shared.RoleVendor:   true,
+}
+
 // Register creates a new user account.
 func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*authmodel.User, error) {
+	if !selfRegisterRoles[input.Role] {
+		return nil, apperrors.ErrForbidden("this role cannot self-register")
+	}
+
 	existing, _ := s.users.FindByEmail(ctx, input.Email)
 	if existing != nil {
 		return nil, apperrors.ErrAlreadyExists("user")
@@ -218,4 +227,9 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user *authmodel.User) 
 		RefreshToken: refreshTokenStr,
 		ExpiresIn:    int64(s.cfg.AccessExpiry.Seconds()),
 	}, nil
+}
+
+// GetUserByID returns a user by ID.
+func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (*authmodel.User, error) {
+	return s.users.FindByID(ctx, id)
 }

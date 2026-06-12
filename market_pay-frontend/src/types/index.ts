@@ -88,3 +88,15 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
 }
+
+export interface NotificationItem {
+  id: string;
+  recipient_id: string;
+  event_type: string;
+  title: string;
+  body: string;
+  is_read: boolean;
+  is_demo: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}

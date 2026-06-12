@@ -11,14 +11,20 @@ import (
 
 // VerifyPINByPhone looks up a vendor by phone and verifies their PIN.
 func (s *VendorService) VerifyPINByPhone(ctx context.Context, phone, pin string) error {
+	_, err := s.AuthenticateByPhonePIN(ctx, phone, pin)
+	return err
+}
+
+// AuthenticateByPhonePIN verifies vendor credentials and returns the linked user ID.
+func (s *VendorService) AuthenticateByPhonePIN(ctx context.Context, phone, pin string) (uuid.UUID, error) {
 	vendor, err := s.vendors.FindByPhone(ctx, phone)
 	if err != nil {
-		return apperrors.ErrNotFound("vendor")
+		return uuid.Nil, apperrors.ErrNotFound("vendor")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(vendor.PINHash), []byte(pin)); err != nil {
-		return apperrors.ErrInvalidPIN
+		return uuid.Nil, apperrors.ErrInvalidPIN
 	}
-	return nil
+	return vendor.UserID, nil
 }
 
 // ListMarketAssociations returns all market associations.

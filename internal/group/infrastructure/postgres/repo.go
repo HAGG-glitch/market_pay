@@ -54,14 +54,29 @@ func (r *GroupRepo) RemoveMember(ctx context.Context, groupID, vendorID uuid.UUI
 		Delete(&groupmodel.GroupMember{}).Error
 }
 
-func (r *GroupRepo) List(ctx context.Context, offset, limit int) ([]*groupmodel.Group, int64, error) {
+func (r *GroupRepo) List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*groupmodel.Group, int64, error) {
 	var groups []*groupmodel.Group
 	var count int64
-	r.db.WithContext(ctx).Model(&groupmodel.Group{}).Count(&count)
-	err := r.db.WithContext(ctx).
-		Preload("Members").
+	q := r.db.WithContext(ctx).Model(&groupmodel.Group{}).Where("is_demo = ?", isDemo)
+	if fieldAgentID != nil {
+		q = q.Where("field_agent_id = ?", *fieldAgentID)
+	}
+	q.Count(&count)
+
+	q2 := r.db.WithContext(ctx).Where("is_demo = ?", isDemo)
+	if fieldAgentID != nil {
+		q2 = q2.Where("field_agent_id = ?", *fieldAgentID)
+	}
+	err := q2.Preload("Members").
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&groups).Error
 	return groups, count, err
+}
+
+func (r *GroupRepo) LogFreezeHistory(ctx context.Context, entityType string, entityID, actorID uuid.UUID, action, reason, actorRole string, isDemo bool) error {
+	return r.db.WithContext(ctx).Exec(`
+		INSERT INTO freeze_history (entity_type, entity_id, action, reason, actor_id, actor_role, is_demo)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		entityType, entityID, action, reason, actorID, actorRole, isDemo).Error
 }

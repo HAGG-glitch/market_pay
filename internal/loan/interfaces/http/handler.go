@@ -9,6 +9,7 @@ import (
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
+	"github.com/marketpay/backend/pkg/democtx"
 	"github.com/marketpay/backend/pkg/middleware"
 	"github.com/marketpay/backend/pkg/pagination"
 )
@@ -87,6 +88,7 @@ func (h *Handler) Apply(c *gin.Context) {
 		TermWeeks: req.TermWeeks,
 		Frequency: req.Frequency,
 		FundedBy:  req.FundedBy,
+		IsDemo:    democtx.FromGin(c),
 	}
 
 	if req.GroupID != nil {
@@ -258,7 +260,7 @@ func (h *Handler) ListByState(c *gin.Context) {
 	state := loanmodel.LoanState(stateStr)
 	params := pagination.FromQuery(c)
 
-	loans, total, err := h.loanSvc.ListByState(c.Request.Context(), state, params.Offset(), params.Limit)
+	loans, total, err := h.loanSvc.ListByState(c.Request.Context(), state, democtx.FromGin(c), params.Offset(), params.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

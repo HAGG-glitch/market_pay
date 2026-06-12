@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	authapp "github.com/marketpay/backend/internal/auth/application"
+	vendorapp "github.com/marketpay/backend/internal/vendors/application"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/middleware"
@@ -13,12 +14,13 @@ import (
 
 // Handler handles auth HTTP requests.
 type Handler struct {
-	authSvc *authapp.AuthService
+	authSvc   *authapp.AuthService
+	vendorSvc *vendorapp.VendorService
 }
 
 // NewHandler constructs an auth Handler.
-func NewHandler(authSvc *authapp.AuthService) *Handler {
-	return &Handler{authSvc: authSvc}
+func NewHandler(authSvc *authapp.AuthService, vendorSvc *vendorapp.VendorService) *Handler {
+	return &Handler{authSvc: authSvc, vendorSvc: vendorSvc}
 }
 
 // RegisterRoutes mounts auth routes onto a router group.
@@ -27,6 +29,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, authMiddleware gin.Handler
 	{
 		auth.POST("/register", h.Register)
 		auth.POST("/login", h.Login)
+		auth.POST("/vendor-login", h.VendorLogin)
 		auth.POST("/refresh", h.Refresh)
 		auth.POST("/logout", authMiddleware, h.Logout)
 		auth.GET("/me", authMiddleware, h.Me)
@@ -45,6 +48,11 @@ type registerRequest struct {
 type loginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+}
+
+type vendorLoginRequest struct {
+	Phone string `json:"phone" binding:"required"`
+	PIN   string `json:"pin" binding:"required,len=4"`
 }
 
 // refreshRequest is the refresh payload.
@@ -114,6 +122,36 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, pair)
 }
 
+// VendorLogin godoc
+// @Summary Vendor login with phone and PIN
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body vendorLoginRequest true "Vendor credentials"
+// @Success 200 {object} authapp.TokenPair
+// @Router /auth/vendor-login [post]
+func (h *Handler) VendorLogin(c *gin.Context) {
+	var req vendorLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, err := h.vendorSvc.AuthenticateByPhonePIN(c.Request.Context(), req.Phone, req.PIN)
+	if err != nil {
+		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+
+	pair, err := h.authSvc.LoginUserByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, pair)
+}
+
 // Refresh godoc
 // @Summary Refresh access token
 // @Tags auth
@@ -168,8 +206,26 @@ func (h *Handler) Logout(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /auth/me [get]
 func (h *Handler) Me(c *gin.Context) {
+	userIDStr := middleware.GetUserID(c)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+	user, err := h.authSvc.GetUserByID(c.Request.Context(), userID)
+	if err != nil || user == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"user_id": userIDStr,
+			"role":    middleware.GetRole(c),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"user_id": middleware.GetUserID(c),
-		"role":    middleware.GetRole(c),
+		"user_id":      user.ID.String(),
+		"email":        user.Email,
+		"phone":        user.Phone,
+		"role":         user.Role,
+		"is_demo":      user.IsDemo,
+		"display_name": user.DisplayName,
 	})
 }
