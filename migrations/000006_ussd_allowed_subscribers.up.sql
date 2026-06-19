@@ -19,7 +19,7 @@ VALUES
 ('b7e8504f4419ded90df8d15d2846814894b1fdfb0ad84f4974709ee0d94c3e87', 'Mr Cyril', TRUE),
 ('bdb7b76c58a77bd2dc791a01e19651276e820b4e0ad8f9568482dde3b0e0579d', 'Sanah', TRUE),
 ('f6a5d604c84acfb1a0904456d7b753407c4b7aad81f2bd18e5f2df6a885d5b95', 'Joshua Yoki', TRUE),
-('82afa84053cecdef23cebb5b4ef37bf710f3c5d648cb6022bdb6bb5b774bce0a', 'alphakan', TRUE)
+('ea30f380-bbb1-5bf0-9439-94ecfb63171e', 'alphakan', TRUE)
 ON CONFLICT (subscriber_id_hash)
 DO UPDATE SET
     label = EXCLUDED.label,
