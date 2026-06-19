@@ -2,6 +2,17 @@
   "version": "1.0",
   "pages": [
     {
+      "id": "mp_access_gate_exchange",
+      "component": {
+        "type": "side_effect"
+      },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {}
+      }
+    },
+    {
       "id": "mp_select_service",
       "component": {
         "type": "menu",
@@ -52,7 +63,12 @@
       "options": { "skip": "$(sc.selected_service != \"register_vendor\")" },
       "on_done": {
         "action": "exchange",
-        "url": "https://localhost:8080/api/v1/monime/exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "registration_vendor_name": "$(sc.registration_vendor_name)",
+          "registration_market_name": "$(page.mp_collect_market_name.value)"
+        },
         "session_context": { "mutations": { "registration_market_name": "$(page.mp_collect_market_name.value)" } }
       }
     },
@@ -108,23 +124,54 @@
       "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
       "on_done": {
         "action": "exchange",
-        "url": "https://localhost:8080/api/v1/monime/exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "payment_vendor_code": "$(sc.payment_vendor_code)",
+          "payment_amount": "$(sc.payment_amount)",
+          "payment_confirmed": "$(page.mp_confirm_payment_receipt.value != \"cancel\")",
+          "payment_send_sms_receipt": "$(page.mp_confirm_payment_receipt.value == \"send_sms\")"
+        },
         "session_context": {
           "mutations": {
-            "payment_confirmed": "$(page.mp_confirm_payment_receipt.value == \"confirm\")",
-            "payment_send_sms_receipt": "false"
+            "payment_confirmed": "$(page.mp_confirm_payment_receipt.value != \"cancel\")",
+            "payment_send_sms_receipt": "$(page.mp_confirm_payment_receipt.value == \"send_sms\")"
+          }
+        }
+      }
+    },
+    {
+      "id": "mp_collect_payment_pin",
+      "component": {
+        "type": "collect_payment"
+      },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\" || sc.payment_confirmed != true)" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "payment_vendor_code": "$(sc.payment_vendor_code)",
+          "payment_amount": "$(sc.payment_amount)",
+          "payment_send_sms_receipt": "$(sc.payment_send_sms_receipt)"
+        },
+        "recurring_context": {
+          "mutations": {
+            "last_txn_1": "$(page.mp_collect_payment_vendor_code.value + \" - SLE \" + page.mp_collect_payment_amount.value)",
+            "last_txn_2": "$(rc.last_txn_1)",
+            "last_txn_3": "$(rc.last_txn_2)"
           }
         }
       }
     },
     {
       "id": "mp_show_payment_result_sms",
-      "component": { "type": "display", "label": "Payment of SLE $(data.amount) sent to $(data.vendor_code).\nRef: $(data.reference)" },
+      "component": { "type": "display", "label": "Payment of SLE $(data.amount) sent to vendor $(data.vendor_code).\nRef: $(data.reference)\nTransaction history updated.\nSMS receipt will be sent." },
       "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" }
     },
     {
       "id": "mp_show_payment_result_no_sms",
-      "component": { "type": "display", "label": "Payment of SLE $(data.amount) sent to $(data.vendor_code).\nRef: $(data.reference)" },
+      "component": { "type": "display", "label": "Payment of SLE $(data.amount) sent to vendor $(data.vendor_code).\nRef: $(data.reference)\nTransaction history updated." },
       "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" }
     },
     {
@@ -134,8 +181,15 @@
     },
     {
       "id": "mp_balance_exchange",
-      "component": { "type": "dynamic", "url": "https://localhost:8080/api/v1/monime/exchange" },
-      "options": { "skip": "$(sc.selected_service != \"balance_check\")" }
+      "component": { "type": "side_effect" },
+      "options": { "skip": "$(sc.selected_service != \"balance_check\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)"
+        }
+      }
     },
     {
       "id": "mp_show_balance_result",
@@ -144,8 +198,15 @@
     },
     {
       "id": "mp_loan_eligibility_exchange",
-      "component": { "type": "dynamic", "url": "https://localhost:8080/api/v1/monime/exchange" },
-      "options": { "skip": "$(sc.selected_service != \"loan_eligibility\")" }
+      "component": { "type": "side_effect" },
+      "options": { "skip": "$(sc.selected_service != \"loan_eligibility\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)"
+        }
+      }
     },
     {
       "id": "mp_show_loan_eligibility_result",
@@ -180,8 +241,17 @@
       "options": { "skip": "$(sc.selected_service != \"loan_application\")" },
       "on_done": {
         "action": "exchange",
-        "url": "https://localhost:8080/api/v1/monime/exchange",
-        "session_context": { "mutations": { "loan_confirmed": "$(page.mp_confirm_loan_application.value == \"submit\")" } }
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "loan_amount": "$(sc.loan_amount)",
+          "loan_confirmed": "$(page.mp_confirm_loan_application.value == \"submit\")"
+        },
+        "session_context": {
+          "mutations": {
+            "loan_confirmed": "$(page.mp_confirm_loan_application.value == \"submit\")"
+          }
+        }
       }
     },
     {
@@ -192,7 +262,7 @@
     {
       "id": "mp_show_loan_application_cancelled",
       "component": { "type": "display", "label": "Loan application cancelled" },
-      "options": { "skip": "$(sc.selected_service != \"loan_application\")" }
+      "options": { "skip": "$(sc.selected_service != \"loan_application\" || sc.loan_confirmed == true)" }
     },
     {
       "id": "mp_exit_service",

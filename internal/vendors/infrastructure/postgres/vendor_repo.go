@@ -42,6 +42,15 @@ func (r *VendorRepo) FindByPhone(ctx context.Context, phone string) (*vendormode
 	return &vendor, nil
 }
 
+func (r *VendorRepo) FindByCode(ctx context.Context, code string) (*vendormodel.Vendor, error) {
+	var vendor vendormodel.Vendor
+	err := r.db.WithContext(ctx).Where("vendor_code = ?", code).First(&vendor).Error
+	if err != nil {
+		return nil, err
+	}
+	return &vendor, nil
+}
+
 func (r *VendorRepo) FindByUserID(ctx context.Context, userID uuid.UUID) (*vendormodel.Vendor, error) {
 	var vendor vendormodel.Vendor
 	err := r.db.WithContext(ctx).

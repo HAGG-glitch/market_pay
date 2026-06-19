@@ -13,6 +13,7 @@ import (
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
 	paymentapp "github.com/marketpay/backend/internal/payment/application"
 	vendorapp "github.com/marketpay/backend/internal/vendors/application"
+	vendormodel "github.com/marketpay/backend/internal/vendors/domain/model"
 	"github.com/marketpay/backend/pkg/monimeexchange"
 	"github.com/marketpay/backend/pkg/realtime"
 	"go.uber.org/zap"
@@ -57,29 +58,50 @@ func (s *Service) Handle(ctx context.Context, raw monimeexchange.EncryptedReques
 		return "", err
 	}
 
-	if s.isDuplicate(payload.Global.SessionID, payload) {
-		// Idempotent replay — return safe stop
-		resp := monimeexchange.StopResponse{Action: "stop", Message: "Request already processed."}
-		return s.crypto.EncryptResponse(resp, aesKey)
+	sessionID := payload.Global.SessionID
+	currentPage := payload.CurrentPage
+	idempotencyKey := sessionID + "-" + currentPage
+
+	// Check idempotency — return cached response if already processed
+	if idempotencyKey != "-" {
+		var existing struct{ ResponseData string }
+		if err := s.db.Raw(`SELECT response_data FROM monime_exchange_sessions WHERE session_id = ? AND response_data != ''`, idempotencyKey).Scan(&existing).Error; err == nil && existing.ResponseData != "" {
+			return existing.ResponseData, nil
+		}
+		// Claim the slot to prevent concurrent processing
+		s.db.Exec(`INSERT INTO monime_exchange_sessions (session_id) VALUES (?) ON CONFLICT DO NOTHING`, idempotencyKey)
 	}
 
 	resp, err := s.route(ctx, payload)
 	if err != nil {
-		s.log.Error("exchange route", zap.Error(err), zap.String("page", payload.CurrentPage))
+		s.log.Error("exchange route", zap.Error(err), zap.String("page", currentPage))
 		stop := monimeexchange.StopResponse{
 			Action:  "stop",
 			Message: "We could not complete your request. Please try again later.",
 		}
-		return s.crypto.EncryptResponse(stop, aesKey)
+		encrypted, encErr := s.crypto.EncryptResponse(stop, aesKey)
+		if encErr != nil {
+			return "", encErr
+		}
+		if idempotencyKey != "-" {
+			s.db.Exec(`UPDATE monime_exchange_sessions SET response_data = ? WHERE session_id = ?`, encrypted, idempotencyKey)
+		}
+		return encrypted, nil
 	}
 
-	s.recordSession(payload.Global.SessionID, resp)
-	return s.crypto.EncryptResponse(resp, aesKey)
+	encrypted, err := s.crypto.EncryptResponse(resp, aesKey)
+	if err != nil {
+		return "", err
+	}
+
+	if idempotencyKey != "-" {
+		s.db.Exec(`UPDATE monime_exchange_sessions SET response_data = ? WHERE session_id = ?`, encrypted, idempotencyKey)
+	}
+	return encrypted, nil
 }
 
 func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
 	sc := sessionContext(p)
-	service := stringValue(sc["selected_service"])
 
 	switch p.CurrentPage {
 	case "mp_collect_market_name":
@@ -94,10 +116,9 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 		return s.checkLoanEligibility(ctx, p)
 	case "mp_confirm_loan_application":
 		return s.applyLoan(ctx, p, sc)
+	case "mp_access_gate_exchange":
+		return s.handleAccessGateExchange(ctx, p)
 	default:
-		if service == "balance_check" {
-			return s.checkBalance(ctx, p)
-		}
 		return monimeexchange.StopResponse{
 			Action:  "stop",
 			Message: "Unknown service. Please dial again.",
@@ -146,6 +167,14 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		return nil, err
 	}
 
+	// Find the created vendor by user ID to link subscriber_id
+	vendor, findErr := s.vendorSvc.GetByUserID(ctx, userID)
+	if findErr != nil {
+		s.log.Warn("vendor lookup after registration", zap.Error(findErr))
+	} else {
+		s.upsertSubscriber(ctx, p.Global.SubscriberID, vendor.ID, p.Global.SubscriberMsisdn)
+	}
+
 	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "VendorCreated",
 		"New vendor registered", fmt.Sprintf("%s registered via USSD at %s", name, market), false)
 
@@ -153,9 +182,9 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		Action: "navigate",
 		PageID: "mp_show_vendor_registration_result",
 		PageData: map[string]interface{}{
-			"vendor_name":  name,
-			"market_name":  market,
-			"message":      fmt.Sprintf("Vendor %s registered at %s. You will receive SMS confirmation.", name, market),
+			"vendor_name": name,
+			"market_name": market,
+			"message":     fmt.Sprintf("Vendor %s registered at %s. You will receive SMS confirmation.", name, market),
 		},
 	}, nil
 }
@@ -189,6 +218,13 @@ func (s *Service) processPayment(ctx context.Context, p *monimeexchange.Exchange
 	}
 
 	ref := fmt.Sprintf("USSD-%s-%d", p.Global.SessionID, time.Now().Unix())
+
+	// Look up vendor by code to validate it exists
+	vendor, err := s.vendorSvc.GetByCode(ctx, code)
+	if err != nil || vendor == nil {
+		return monimeexchange.StopResponse{Action: "stop", Message: "Vendor code not found."}, nil
+	}
+
 	receipt := fmt.Sprintf("Payment SLE %.2f to %s. Ref: %s", amount, code, ref)
 	if sendSMS {
 		receipt += "\nSMS receipt will be sent."
@@ -213,15 +249,14 @@ func (s *Service) processPayment(ctx context.Context, p *monimeexchange.Exchange
 }
 
 func (s *Service) checkBalance(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
-	phone := normalizePhone(p.Global.SubscriberMsisdn)
-	vendor, err := s.vendorSvc.FindByPhone(ctx, phone)
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.NavigateResponse{
 			Action: "navigate",
 			PageID: "mp_show_balance_result",
 			PageData: map[string]interface{}{
 				"balance": "0.00",
-				"message": "No vendor account found for this number.",
+				"message": "No vendor account found for this number. Please register first.",
 			},
 		}, nil
 	}
@@ -240,8 +275,19 @@ func (s *Service) checkBalance(ctx context.Context, p *monimeexchange.ExchangePa
 }
 
 func (s *Service) checkLoanEligibility(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
-	phone := normalizePhone(p.Global.SubscriberMsisdn)
-	eligible, reason, err := s.vendorSvc.CheckEligibilityByPhone(ctx, phone)
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
+	if err != nil || vendor == nil {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_show_loan_eligibility_result",
+			PageData: map[string]interface{}{
+				"eligible": false,
+				"message":  "Register as a vendor first before checking loan eligibility.",
+			},
+		}, nil
+	}
+
+	eligible, reason, err := s.vendorSvc.CheckEligibilityByPhone(ctx, vendor.Phone)
 	if err != nil {
 		return nil, err
 	}
@@ -272,8 +318,7 @@ func (s *Service) applyLoan(ctx context.Context, p *monimeexchange.ExchangePaylo
 		return monimeexchange.StopResponse{Action: "stop", Message: "Invalid loan amount."}, nil
 	}
 
-	phone := normalizePhone(p.Global.SubscriberMsisdn)
-	vendor, err := s.vendorSvc.FindByPhone(ctx, phone)
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.StopResponse{Action: "stop", Message: "Register as a vendor before applying for a loan."}, nil
 	}
@@ -307,6 +352,63 @@ func (s *Service) applyLoan(ctx context.Context, p *monimeexchange.ExchangePaylo
 	}, nil
 }
 
+// findVendorBySubscriber looks up a vendor through the subscriber_id mapping.
+func (s *Service) findVendorBySubscriber(ctx context.Context, subscriberID string) (*vendormodel.Vendor, error) {
+	if subscriberID == "" {
+		return nil, fmt.Errorf("empty subscriber id")
+	}
+	var sub struct{ VendorID uuid.UUID }
+	err := s.db.Raw(`SELECT vendor_id FROM ussd_subscribers WHERE subscriber_id = ?`, subscriberID).Scan(&sub).Error
+	if err != nil || sub.VendorID == uuid.Nil {
+		return nil, fmt.Errorf("no vendor linked to subscriber")
+	}
+	return s.vendorSvc.GetByID(ctx, sub.VendorID)
+}
+
+// upsertSubscriber creates or updates a subscriber identity mapping.
+func (s *Service) upsertSubscriber(ctx context.Context, subscriberID string, vendorID uuid.UUID, maskedMsisdn string) {
+	if subscriberID == "" {
+		return
+	}
+	s.db.Exec(`INSERT INTO ussd_subscribers (subscriber_id, vendor_id, masked_msisdn) VALUES (?, ?, ?)
+		ON CONFLICT (subscriber_id) DO UPDATE SET vendor_id = EXCLUDED.vendor_id, masked_msisdn = EXCLUDED.masked_msisdn, updated_at = NOW()`,
+		subscriberID, vendorID, maskedMsisdn)
+}
+
+// handleAccessGateExchange checks if the subscriber is allowed to use the USSD flow.
+func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	subscriberID := p.Global.SubscriberID
+	if subscriberID == "" {
+		return monimeexchange.StopResponse{
+			Action:  "stop",
+			Message: "Flow doesn't exist.",
+		}, nil
+	}
+
+	hash := normalizeSubscriberHash(subscriberID)
+
+	var allowed struct{ Count int }
+	err := s.db.Raw(`SELECT COUNT(*) AS count FROM ussd_allowed_subscribers WHERE subscriber_id_hash = ? AND is_active = true`, hash).Scan(&allowed).Error
+	if err != nil || allowed.Count == 0 {
+		return monimeexchange.StopResponse{
+			Action:  "stop",
+			Message: "Flow doesn't exist.",
+		}, nil
+	}
+
+	return monimeexchange.NavigateResponse{
+		Action: "navigate",
+		PageID: "mp_select_service",
+	}, nil
+}
+
+// normalizeSubscriberHash returns the SHA-256 hex digest of subscriberID.
+// It MUST only be called once per value — never re-hash a previously hashed value.
+func normalizeSubscriberHash(subscriberID string) string {
+	h := sha256.Sum256([]byte(subscriberID))
+	return hex.EncodeToString(h[:])
+}
+
 func sessionContext(p *monimeexchange.ExchangePayload) map[string]interface{} {
 	merged := map[string]interface{}{}
 	for k, v := range p.FlowData {
@@ -318,7 +420,6 @@ func sessionContext(p *monimeexchange.ExchangePayload) map[string]interface{} {
 	for k, v := range p.SessionContext {
 		merged[k] = v
 	}
-	// Monime session context mutations (sc.*)
 	if sc, ok := p.SessionContext["mutations"].(map[string]interface{}); ok {
 		for k, v := range sc {
 			merged[k] = v

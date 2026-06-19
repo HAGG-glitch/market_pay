@@ -18,6 +18,7 @@ type VendorRepository interface {
 	Create(ctx context.Context, vendor *vendormodel.Vendor) error
 	FindByID(ctx context.Context, id uuid.UUID) (*vendormodel.Vendor, error)
 	FindByPhone(ctx context.Context, phone string) (*vendormodel.Vendor, error)
+	FindByCode(ctx context.Context, code string) (*vendormodel.Vendor, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID) (*vendormodel.Vendor, error)
 	Update(ctx context.Context, vendor *vendormodel.Vendor) error
 	List(ctx context.Context, isDemo bool, fieldAgentID *uuid.UUID, offset, limit int) ([]*vendormodel.Vendor, int64, error)
@@ -133,6 +134,24 @@ func (s *VendorService) ApproveKYC(ctx context.Context, vendorID uuid.UUID, appr
 		return nil, apperrors.ErrInternalServer(err)
 	}
 
+	return vendor, nil
+}
+
+// GetByCode retrieves a vendor by their vendor code.
+func (s *VendorService) GetByCode(ctx context.Context, code string) (*vendormodel.Vendor, error) {
+	vendor, err := s.vendors.FindByCode(ctx, code)
+	if err != nil {
+		return nil, apperrors.ErrNotFound("vendor")
+	}
+	return vendor, nil
+}
+
+// GetByUserID retrieves a vendor by their linked user ID.
+func (s *VendorService) GetByUserID(ctx context.Context, userID uuid.UUID) (*vendormodel.Vendor, error) {
+	vendor, err := s.vendors.FindByUserID(ctx, userID)
+	if err != nil {
+		return nil, apperrors.ErrNotFound("vendor")
+	}
 	return vendor, nil
 }
 

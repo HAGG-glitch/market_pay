@@ -232,7 +232,8 @@ func main() {
 	// ── Monime USSD Exchange ────────────────────────────────────────────────
 	monimeWebhook := monimehttp.NewWebhookHandler(db, paymentSvc, monimeAdapter)
 
-	var monimeHandler *monimehttp.Handler
+		var monimeHandler *monimehttp.Handler
+	keyLoaded := false
 	pemKey := os.Getenv("MONIME_RSA_PRIVATE_KEY")
 	if pemKey == "" {
 		if keyFile := os.Getenv("MONIME_RSA_KEY_FILE"); keyFile != "" {
@@ -250,8 +251,9 @@ func main() {
 		if err != nil {
 			log.Warn("monime exchange crypto init failed", zap.Error(err))
 		} else {
+			keyLoaded = true
 			exchangeSvc := monimeexchangeapp.NewService(db, crypto, vendorSvc, loanSvc, paymentSvc, inAppNotifier, log.Logger)
-			monimeHandler = monimehttp.NewHandler(exchangeSvc)
+			monimeHandler = monimehttp.NewHandler(exchangeSvc, keyLoaded)
 			log.Info("monime exchange endpoint enabled")
 		}
 	} else {

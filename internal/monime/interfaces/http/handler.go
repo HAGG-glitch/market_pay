@@ -12,15 +12,25 @@ import (
 
 // Handler serves Monime encrypted exchange endpoints.
 type Handler struct {
-	svc *exchange.Service
+	svc         *exchange.Service
+	keyLoaded   bool
 }
 
-func NewHandler(svc *exchange.Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *exchange.Service, keyLoaded bool) *Handler {
+	return &Handler{svc: svc, keyLoaded: keyLoaded}
 }
 
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/monime/exchange", h.HandleExchange)
+	rg.GET("/monime/exchange/health", h.Health)
+}
+
+func (h *Handler) Health(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"status":           "ok",
+		"exchange_enabled": true,
+		"key_loaded":       h.keyLoaded,
+	})
 }
 
 // HandleExchange decrypts Monime exchange requests and returns encrypted text/plain.
