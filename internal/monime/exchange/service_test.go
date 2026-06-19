@@ -1,8 +1,6 @@
 package exchange
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -82,60 +80,6 @@ func TestSessionContextMutationsOverride(t *testing.T) {
 	sc := sessionContext(p)
 
 	assert.Equal(t, "from_mutation", sc["key"])
-}
-
-func TestNormalizeSubscriberHash(t *testing.T) {
-	tests := []struct {
-		name       string
-		input      string
-		wantLength int
-	}{
-		{"non-empty subscriber id", "sub-abc-123", 64},
-		{"different subscriber id", "sub-xyz-789", 64},
-		{"empty string", "", 64},
-		{"special characters", "user@domain!123", 64},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := normalizeSubscriberHash(tc.input)
-
-			assert.Len(t, result, tc.wantLength)
-			// Verify it's valid hex
-			decoded, err := hex.DecodeString(result)
-			assert.NoError(t, err)
-			assert.Len(t, decoded, 32)
-
-			// Verify it matches a direct SHA-256 call
-			h := sha256.Sum256([]byte(tc.input))
-			expected := hex.EncodeToString(h[:])
-			assert.Equal(t, expected, result, "must match standard SHA-256 hex encoding")
-		})
-	}
-}
-
-func TestNormalizeSubscriberHashDeterministic(t *testing.T) {
-	input := "subscriber-test-001"
-	h1 := normalizeSubscriberHash(input)
-	h2 := normalizeSubscriberHash(input)
-	assert.Equal(t, h1, h2, "same input must produce same hash")
-}
-
-func TestNormalizeSubscriberHashUnique(t *testing.T) {
-	h1 := normalizeSubscriberHash("user-a")
-	h2 := normalizeSubscriberHash("user-b")
-	assert.NotEqual(t, h1, h2, "different inputs must produce different hashes")
-}
-
-func TestNormalizeSubscriberHashNoDoubleHash(t *testing.T) {
-	input := "raw-subscriber-id"
-	first := normalizeSubscriberHash(input)
-	second := normalizeSubscriberHash(first)
-	// second should NOT equal first — if we double-hash by mistake, they would differ from a single hash
-	h := sha256.Sum256([]byte(input))
-	single := hex.EncodeToString(h[:])
-	assert.Equal(t, single, first, "first pass must be standard SHA-256")
-	assert.NotEqual(t, first, second, "second pass must produce different output, proving no double-hash bug")
 }
 
 func TestRouteDispatchesKnownPages(t *testing.T) {

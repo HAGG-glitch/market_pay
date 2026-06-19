@@ -376,6 +376,7 @@ func (s *Service) upsertSubscriber(ctx context.Context, subscriberID string, ven
 }
 
 // handleAccessGateExchange checks if the subscriber is allowed to use the USSD flow.
+// subscriberID from Monime is already a SHA-256 hash — compare directly, do NOT re-hash.
 func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
 	subscriberID := p.Global.SubscriberID
 	if subscriberID == "" {
@@ -385,10 +386,8 @@ func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchang
 		}, nil
 	}
 
-	hash := normalizeSubscriberHash(subscriberID)
-
 	var allowed struct{ Count int }
-	err := s.db.Raw(`SELECT COUNT(*) AS count FROM ussd_allowed_subscribers WHERE subscriber_id_hash = ? AND is_active = true`, hash).Scan(&allowed).Error
+	err := s.db.Raw(`SELECT COUNT(*) AS count FROM ussd_allowed_subscribers WHERE subscriber_id_hash = ? AND is_active = true`, subscriberID).Scan(&allowed).Error
 	if err != nil || allowed.Count == 0 {
 		return monimeexchange.StopResponse{
 			Action:  "stop",
@@ -400,13 +399,6 @@ func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchang
 		Action: "navigate",
 		PageID: "mp_select_service",
 	}, nil
-}
-
-// normalizeSubscriberHash returns the SHA-256 hex digest of subscriberID.
-// It MUST only be called once per value — never re-hash a previously hashed value.
-func normalizeSubscriberHash(subscriberID string) string {
-	h := sha256.Sum256([]byte(subscriberID))
-	return hex.EncodeToString(h[:])
 }
 
 func sessionContext(p *monimeexchange.ExchangePayload) map[string]interface{} {
