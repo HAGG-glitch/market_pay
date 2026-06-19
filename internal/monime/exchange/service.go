@@ -58,6 +58,12 @@ func (s *Service) Handle(ctx context.Context, raw monimeexchange.EncryptedReques
 		return "", err
 	}
 
+	subPref := payload.Global.SubscriberID
+	if len(subPref) > 8 {
+		subPref = subPref[:8]
+	}
+	s.log.Info("incoming request", zap.String("page", payload.CurrentPage), zap.String("subscriber_id_prefix", subPref), zap.Int("subscriber_id_len", len(payload.Global.SubscriberID)))
+
 	sessionID := payload.Global.SessionID
 	currentPage := payload.CurrentPage
 	idempotencyKey := sessionID + "-" + currentPage
@@ -379,6 +385,12 @@ func (s *Service) upsertSubscriber(ctx context.Context, subscriberID string, ven
 // subscriberID from Monime is already a SHA-256 hash — compare directly, do NOT re-hash.
 func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
 	subscriberID := p.Global.SubscriberID
+	subHash := subscriberID
+	if len(subHash) > 8 {
+		subHash = subHash[:8]
+	}
+	s.log.Warn("access gate check", zap.String("subscriber_id_prefix", subHash), zap.Int("subscriber_id_len", len(subscriberID)))
+
 	if subscriberID == "" {
 		return monimeexchange.StopResponse{
 			Action:  "stop",
@@ -389,11 +401,14 @@ func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchang
 	var allowed struct{ Count int }
 	err := s.db.Raw(`SELECT COUNT(*) AS count FROM ussd_allowed_subscribers WHERE subscriber_id_hash = ? AND is_active = true`, subscriberID).Scan(&allowed).Error
 	if err != nil || allowed.Count == 0 {
+		s.log.Warn("access gate denied", zap.String("subscriber_id_prefix", subHash), zap.Error(err))
 		return monimeexchange.StopResponse{
 			Action:  "stop",
 			Message: "Flow doesn't exist.",
 		}, nil
 	}
+
+	s.log.Info("access gate allowed", zap.String("subscriber_id_prefix", subHash))
 
 	return monimeexchange.NavigateResponse{
 		Action: "navigate",
