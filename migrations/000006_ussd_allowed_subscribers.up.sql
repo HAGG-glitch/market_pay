@@ -14,7 +14,7 @@ ON ussd_allowed_subscribers (subscriber_id_hash, is_active);
 
 INSERT INTO ussd_allowed_subscribers (subscriber_id_hash, label, is_active)
 VALUES
-('a81aa760bee43a675750076012f74d4e43248898b077b934547d3f6dceefdc68', 'Nelson', TRUE),
+('3d051666-0faf-57ee-acd7-3850e5f46501', 'Nelson', TRUE),
 ('82a05af957af142cd35af548d76596ba0cf21730023e032adaef2c7c279d7270', 'Moses Moore', TRUE),
 ('b7e8504f4419ded90df8d15d2846814894b1fdfb0ad84f4974709ee0d94c3e87', 'Mr Cyril', TRUE),
 ('bdb7b76c58a77bd2dc791a01e19651276e820b4e0ad8f9568482dde3b0e0579d', 'Sanah', TRUE),
