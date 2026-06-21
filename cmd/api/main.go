@@ -281,6 +281,14 @@ func main() {
 	router.NoRoute(mw.NotFound())
 	router.NoMethod(mw.MethodNotAllowed())
 
+	// Root
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"service": cfg.App.Name,
+			"status":  "running",
+		})
+	})
+
 	// Health
 	router.GET("/health", func(c *gin.Context) {
 		sqlDB, _ := db.DB()
