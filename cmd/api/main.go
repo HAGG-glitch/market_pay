@@ -250,7 +250,7 @@ func main() {
 	notifHandler := notifhttp.NewHandler(db, eventHub)
 
 	// ── Monime USSD Exchange ────────────────────────────────────────────────
-	monimeWebhook := monimehttp.NewWebhookHandler(db, paymentSvc, monimeAdapter, loanSvc, log)
+	monimeWebhook := monimehttp.NewWebhookHandler(db, paymentSvc, monimeAdapter, loanSvc, repaySvc, log)
 
 		var monimeHandler *monimehttp.Handler
 	keyLoaded := false
@@ -272,7 +272,7 @@ func main() {
 			log.Warn("monime exchange crypto init failed", zap.Error(err))
 		} else {
 			keyLoaded = true
-			exchangeSvc := monimeexchangeapp.NewService(db, crypto, vendorSvc, loanSvc, paymentSvc, inAppNotifier, log.Logger)
+			exchangeSvc := monimeexchangeapp.NewService(db, crypto, vendorSvc, loanSvc, paymentSvc, repaySvc, inAppNotifier, log.Logger)
 			monimeHandler = monimehttp.NewHandler(exchangeSvc, keyLoaded)
 			log.Info("monime exchange endpoint enabled")
 		}

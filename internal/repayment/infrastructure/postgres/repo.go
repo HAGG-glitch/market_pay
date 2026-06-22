@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
+	repaymodel "github.com/marketpay/backend/internal/repayment/domain/model"
 	"gorm.io/gorm"
 )
 
@@ -51,4 +52,30 @@ func (r *RepaymentRepo) FindOverdueSchedules(ctx context.Context) ([]loanmodel.R
 		Order("due_date ASC").
 		Find(&schedules).Error
 	return schedules, err
+}
+
+func (r *RepaymentRepo) CreateRepayment(ctx context.Context, repayment *repaymodel.LoanRepayment) error {
+	return r.db.WithContext(ctx).Create(repayment).Error
+}
+
+func (r *RepaymentRepo) FindRepaymentByMonimeRef(ctx context.Context, monimeRef string) (*repaymodel.LoanRepayment, error) {
+	var repayment repaymodel.LoanRepayment
+	err := r.db.WithContext(ctx).Where("monime_ref = ?", monimeRef).First(&repayment).Error
+	if err != nil {
+		return nil, err
+	}
+	return &repayment, nil
+}
+
+func (r *RepaymentRepo) FindRepaymentByPaymentRef(ctx context.Context, paymentRef string) (*repaymodel.LoanRepayment, error) {
+	var repayment repaymodel.LoanRepayment
+	err := r.db.WithContext(ctx).Where("payment_ref = ?", paymentRef).First(&repayment).Error
+	if err != nil {
+		return nil, err
+	}
+	return &repayment, nil
+}
+
+func (r *RepaymentRepo) UpdateRepayment(ctx context.Context, repayment *repaymodel.LoanRepayment) error {
+	return r.db.WithContext(ctx).Save(repayment).Error
 }

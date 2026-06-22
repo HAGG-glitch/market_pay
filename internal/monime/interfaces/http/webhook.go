@@ -11,6 +11,7 @@ import (
 	loanapp "github.com/marketpay/backend/internal/loan/application"
 	monimeinfra "github.com/marketpay/backend/internal/monime/infrastructure"
 	paymentapp "github.com/marketpay/backend/internal/payment/application"
+	repayapp "github.com/marketpay/backend/internal/repayment/application"
 	"github.com/marketpay/backend/pkg/logger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -21,11 +22,12 @@ type WebhookHandler struct {
 	paymentSvc *paymentapp.PaymentService
 	adapter    *monimeinfra.MonimeAdapter
 	loanSvc    *loanapp.LoanService
+	repaySvc   *repayapp.RepaymentService
 	log        *logger.Logger
 }
 
-func NewWebhookHandler(db *gorm.DB, paymentSvc *paymentapp.PaymentService, adapter *monimeinfra.MonimeAdapter, loanSvc *loanapp.LoanService, log *logger.Logger) *WebhookHandler {
-	return &WebhookHandler{db: db, paymentSvc: paymentSvc, adapter: adapter, loanSvc: loanSvc, log: log}
+func NewWebhookHandler(db *gorm.DB, paymentSvc *paymentapp.PaymentService, adapter *monimeinfra.MonimeAdapter, loanSvc *loanapp.LoanService, repaySvc *repayapp.RepaymentService, log *logger.Logger) *WebhookHandler {
+	return &WebhookHandler{db: db, paymentSvc: paymentSvc, adapter: adapter, loanSvc: loanSvc, repaySvc: repaySvc, log: log}
 }
 
 func (h *WebhookHandler) RegisterRoutes(rg *gin.RouterGroup) {
@@ -125,9 +127,10 @@ func (h *WebhookHandler) Handle(c *gin.Context) {
 		h.handlePayoutCompleted(c, payoutID, v2.Data)
 	case "payout.failed":
 		h.handlePayoutFailed(c, payoutID, v2.Data)
+	case "financial_account.credited":
+		h.handleAccountCredited(c, payoutID, v2.Data)
 	default:
-		// Acknowledge other events (financial_account.debited, etc.)
-		h.log.Debug("ignoring non-payout webhook event", zap.String("event", eventName))
+		h.log.Debug("ignoring webhook event", zap.String("event", eventName))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"received": true})
@@ -184,6 +187,61 @@ func (h *WebhookHandler) handlePayoutFailed(c *gin.Context, payoutID string, raw
 		h.db.Exec(`UPDATE loans SET state = 'APPROVED', failure_reason = ? WHERE monime_reference = ? AND state = 'DISBURSED'`, failureReason, payoutID)
 	}
 
+}
+
+// creditWebhookData is the data payload for financial_account.credited events.
+type creditWebhookData struct {
+	Amount   *creditAmount   `json:"amount,omitempty"`
+	Source   *creditSource   `json:"source,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+type creditAmount struct {
+	Currency string  `json:"currency"`
+	Value    float64 `json:"value"`
+}
+
+type creditSource struct {
+	PhoneNumber          string `json:"phoneNumber"`
+	ProviderID           string `json:"providerId"`
+	TransactionReference string `json:"transactionReference"`
+	Type                 string `json:"type"`
+}
+
+func (h *WebhookHandler) handleAccountCredited(c *gin.Context, collectionRef string, rawData json.RawMessage) {
+	var data creditWebhookData
+	if rawData != nil {
+		_ = json.Unmarshal(rawData, &data)
+	}
+
+	h.log.Info("account credited",
+		zap.String("collection_ref", collectionRef),
+		zap.Float64("amount", safeAmount(data.Amount)),
+	)
+
+	// Try matching by Monime collection reference
+	if err := h.repaySvc.ConfirmRepayment(c.Request.Context(), collectionRef); err == nil {
+		h.log.Info("repayment confirmed via monime_ref", zap.String("collection_ref", collectionRef))
+		return
+	}
+
+	// Fallback: try matching by payment_ref in metadata
+	if ref, ok := data.Metadata["payment_ref"].(string); ok && ref != "" {
+		if err := h.repaySvc.ConfirmRepayment(c.Request.Context(), ref); err == nil {
+			h.log.Info("repayment confirmed via metadata.payment_ref", zap.String("payment_ref", ref))
+			return
+		}
+		h.log.Warn("no repayment record matched", zap.String("collection_ref", collectionRef), zap.String("payment_ref", ref))
+	} else {
+		h.log.Warn("no repayment matched by collection_ref and no payment_ref in metadata", zap.String("collection_ref", collectionRef))
+	}
+}
+
+func safeAmount(a *creditAmount) float64 {
+	if a == nil {
+		return 0
+	}
+	return a.Value
 }
 
 // Payment webhook handling (legacy — collection webhooks).

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
+	repaymodel "github.com/marketpay/backend/internal/repayment/domain/model"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/config"
@@ -20,6 +21,10 @@ type RepaymentRepository interface {
 	FindLoanByID(ctx context.Context, id uuid.UUID) (*loanmodel.Loan, error)
 	UpdateLoan(ctx context.Context, loan *loanmodel.Loan) error
 	FindOverdueSchedules(ctx context.Context) ([]loanmodel.RepaymentSchedule, error)
+	CreateRepayment(ctx context.Context, repayment *repaymodel.LoanRepayment) error
+	FindRepaymentByMonimeRef(ctx context.Context, monimeRef string) (*repaymodel.LoanRepayment, error)
+	FindRepaymentByPaymentRef(ctx context.Context, paymentRef string) (*repaymodel.LoanRepayment, error)
+	UpdateRepayment(ctx context.Context, repayment *repaymodel.LoanRepayment) error
 }
 
 // AuditRepository logs events.
@@ -156,6 +161,95 @@ func (s *RepaymentService) Repay(ctx context.Context, input RepayInput) (*loanmo
 	})
 
 	return loan, nil
+}
+
+// RecordRepaymentInput holds data to create a new loan repayment record.
+type RecordRepaymentInput struct {
+	LoanID     uuid.UUID
+	VendorID   uuid.UUID
+	Amount     float64
+	MonimeRef  string
+	PaymentRef string
+	Metadata   map[string]interface{}
+}
+
+// RecordRepayment creates a pending LoanRepayment record for webhook reconciliation.
+func (s *RepaymentService) RecordRepayment(ctx context.Context, input RecordRepaymentInput) (*repaymodel.LoanRepayment, error) {
+	repayment := repaymodel.NewLoanRepayment(
+		input.LoanID, input.VendorID, input.Amount,
+		input.MonimeRef, input.PaymentRef, input.Metadata,
+	)
+	if err := s.repo.CreateRepayment(ctx, repayment); err != nil {
+		return nil, apperrors.ErrInternalServer(err)
+	}
+	s.log.Info("repayment recorded",
+		zap.String("payment_ref", input.PaymentRef),
+		zap.String("monime_ref", input.MonimeRef),
+		zap.Float64("amount", input.Amount),
+	)
+	return repayment, nil
+}
+
+// ConfirmRepayment marks a LoanRepayment as completed and applies it to the loan.
+func (s *RepaymentService) ConfirmRepayment(ctx context.Context, monimeRef string) error {
+	repayment, err := s.repo.FindRepaymentByMonimeRef(ctx, monimeRef)
+	if err != nil {
+		return apperrors.ErrNotFound("repayment")
+	}
+	if repayment.Status != repaymodel.RepaymentStatusPending {
+		s.log.Warn("repayment not in PENDING state",
+			zap.String("payment_ref", repayment.PaymentRef),
+			zap.String("status", repayment.Status),
+		)
+		return nil
+	}
+
+	repayment.Confirm()
+	if err := s.repo.UpdateRepayment(ctx, repayment); err != nil {
+		return apperrors.ErrInternalServer(err)
+	}
+
+	// Apply to loan schedules
+	_, err = s.Repay(ctx, RepayInput{
+		LoanID:    repayment.LoanID,
+		VendorID:  repayment.VendorID,
+		Amount:    repayment.Amount,
+		MonimeRef: repayment.MonimeRef,
+	})
+	if err != nil {
+		s.log.Error("failed to apply repayment to loan",
+			zap.String("loan_id", repayment.LoanID.String()),
+			zap.Error(err),
+		)
+	}
+
+	_ = s.audit.Log(ctx, &shared.AuditLog{
+		ActorID:    repayment.VendorID,
+		ActorRole:  shared.RoleVendor,
+		Action:     "REPAYMENT_CONFIRMED",
+		Resource:   "loan_repayment",
+		ResourceID: repayment.ID.String(),
+		NewState:   repaymodel.RepaymentStatusCompleted,
+	})
+
+	return nil
+}
+
+// FailRepayment marks a LoanRepayment as failed.
+func (s *RepaymentService) FailRepayment(ctx context.Context, monimeRef string) error {
+	repayment, err := s.repo.FindRepaymentByMonimeRef(ctx, monimeRef)
+	if err != nil {
+		return apperrors.ErrNotFound("repayment")
+	}
+	repayment.Fail()
+	if err := s.repo.UpdateRepayment(ctx, repayment); err != nil {
+		return apperrors.ErrInternalServer(err)
+	}
+	s.log.Warn("repayment failed",
+		zap.String("payment_ref", repayment.PaymentRef),
+		zap.String("monime_ref", monimeRef),
+	)
+	return nil
 }
 
 // MarkDefaulted flags a loan as defaulted and freezes the group if applicable.

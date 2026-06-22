@@ -12,6 +12,7 @@ import (
 	loanapp "github.com/marketpay/backend/internal/loan/application"
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
 	paymentapp "github.com/marketpay/backend/internal/payment/application"
+	repayapp "github.com/marketpay/backend/internal/repayment/application"
 	vendorapp "github.com/marketpay/backend/internal/vendors/application"
 	vendormodel "github.com/marketpay/backend/internal/vendors/domain/model"
 	"github.com/marketpay/backend/pkg/monimeexchange"
@@ -33,6 +34,7 @@ type Service struct {
 	vendorSvc  *vendorapp.VendorService
 	loanSvc    *loanapp.LoanService
 	paymentSvc *paymentapp.PaymentService
+	repaySvc   *repayapp.RepaymentService
 	notifier   Notifier
 	log        *zap.Logger
 }
@@ -43,12 +45,13 @@ func NewService(
 	vendorSvc *vendorapp.VendorService,
 	loanSvc *loanapp.LoanService,
 	paymentSvc *paymentapp.PaymentService,
+	repaySvc *repayapp.RepaymentService,
 	notifier Notifier,
 	log *zap.Logger,
 ) *Service {
 	return &Service{
 		db: db, crypto: crypto, vendorSvc: vendorSvc,
-		loanSvc: loanSvc, paymentSvc: paymentSvc, notifier: notifier, log: log,
+		loanSvc: loanSvc, paymentSvc: paymentSvc, repaySvc: repaySvc, notifier: notifier, log: log,
 	}
 }
 
@@ -495,11 +498,44 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 	ref := fmt.Sprintf("REPAY-%s-%d", p.Global.SessionID, time.Now().Unix())
 	s.log.Info("repayment result", zap.String("session", p.Global.SessionID), zap.String("amount", amountStr), zap.String("ref", ref))
 
+	// Try to extract Monime collection reference from the template callback data
+	monimeRef := ""
+	for _, key := range []string{"external_ref", "transaction_reference", "reference", "receipt", "transactionId"} {
+		if v := stringValue(p.ExportedData[key]); v != "" {
+			monimeRef = v
+			break
+		}
+	}
+	if monimeRef == "" {
+		monimeRef = ref
+	}
+
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err == nil && vendor != nil {
 		s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "RepaymentReceived",
 			"USSD loan repayment",
 			fmt.Sprintf("Vendor %s repaid SLE %s. Ref: %s", vendor.FullName(), amountStr, ref), false)
+
+		// Record the repayment for webhook reconciliation
+		amount := 0.0
+		fmt.Sscanf(amountStr, "%f", &amount)
+		loanIDs := s.activeLoanIDs(ctx, vendor.ID)
+		for _, loanID := range loanIDs {
+			_, _ = s.repaySvc.RecordRepayment(ctx, repayapp.RecordRepaymentInput{
+				LoanID:     loanID,
+				VendorID:   vendor.ID,
+				Amount:     amount,
+				MonimeRef:  monimeRef,
+				PaymentRef: ref,
+				Metadata: map[string]interface{}{
+					"source":       "ussd_repayment",
+					"session_id":   p.Global.SessionID,
+					"phone":        p.Global.SubscriberMsisdn,
+					"monime_event": p.ExportedData,
+				},
+			})
+			break // one record per repayment
+		}
 	}
 
 	return monimeexchange.NavigateResponse{
@@ -510,6 +546,13 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 			"message":   fmt.Sprintf("Repayment of SLE %s successful.\nRef: %s\nThank you.", amountStr, ref),
 		},
 	}, nil
+}
+
+// activeLoanIDs returns IDs of active loans for a vendor.
+func (s *Service) activeLoanIDs(ctx context.Context, vendorID uuid.UUID) []uuid.UUID {
+	var ids []uuid.UUID
+	s.db.Raw(`SELECT id FROM loans WHERE vendor_id = ? AND state = 'ACTIVE' AND deleted_at IS NULL LIMIT 1`, vendorID).Scan(&ids)
+	return ids
 }
 
 func (s *Service) handleTransactionHistory(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
@@ -593,9 +636,44 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 	ref := fmt.Sprintf("USSD-%s-%d", p.Global.SessionID, time.Now().Unix())
 	s.log.Info("public payment result", zap.String("session", p.Global.SessionID), zap.String("code", code), zap.String("amount", amountStr), zap.String("ref", ref))
 
+	monimeRef := ""
+	for _, key := range []string{"external_ref", "transaction_reference", "reference", "receipt", "transactionId"} {
+		if v := stringValue(p.ExportedData[key]); v != "" {
+			monimeRef = v
+			break
+		}
+	}
+	if monimeRef == "" {
+		monimeRef = ref
+	}
+
 	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "PaymentReceived",
 		"USSD public payment",
 		fmt.Sprintf("Customer paid SLE %s to %s. Ref: %s", amountStr, code, ref), false)
+
+	// Record a loan repayment if the vendor has active loans
+	vendor, err := s.vendorSvc.GetByCode(ctx, code)
+	if err == nil && vendor != nil {
+		amount := 0.0
+		fmt.Sscanf(amountStr, "%f", &amount)
+		loanIDs := s.activeLoanIDs(ctx, vendor.ID)
+		for _, loanID := range loanIDs {
+			_, _ = s.repaySvc.RecordRepayment(ctx, repayapp.RecordRepaymentInput{
+				LoanID:     loanID,
+				VendorID:   vendor.ID,
+				Amount:     amount,
+				MonimeRef:  monimeRef,
+				PaymentRef: ref,
+				Metadata: map[string]interface{}{
+					"source":     "ussd_public_payment",
+					"vendor_code": code,
+					"session_id": p.Global.SessionID,
+					"phone":      p.Global.SubscriberMsisdn,
+				},
+			})
+			break
+		}
+	}
 
 	return monimeexchange.NavigateResponse{
 		Action: "navigate",
