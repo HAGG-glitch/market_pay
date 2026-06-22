@@ -258,7 +258,7 @@ func (h *Handler) Disburse(c *gin.Context) {
 // @Success 200 {object} pagination.Response[loanmodel.Loan]
 // @Router /loans [get]
 func (h *Handler) ListByState(c *gin.Context) {
-	stateStr := c.DefaultQuery("state", string(loanmodel.LoanStateUnderReview))
+	stateStr := c.DefaultQuery("state", string(loanmodel.LoanStatePendingReview))
 	state := loanmodel.LoanState(stateStr)
 	params := pagination.FromQuery(c)
 
