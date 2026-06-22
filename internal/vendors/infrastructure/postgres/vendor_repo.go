@@ -108,6 +108,10 @@ func (r *VendorRepo) ListMarketAssociations(ctx context.Context) ([]*vendormodel
 	return mas, err
 }
 
+func (r *VendorRepo) ActivateUser(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Exec(`UPDATE users SET is_active = true, updated_at = NOW() WHERE id = ?`, userID).Error
+}
+
 // LogFreezeHistory records a freeze/unfreeze action.
 func (r *VendorRepo) LogFreezeHistory(ctx context.Context, entityType string, entityID, actorID uuid.UUID, action, reason, actorRole string, isDemo bool) error {
 	return r.db.WithContext(ctx).Exec(`

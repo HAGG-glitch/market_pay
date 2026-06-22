@@ -25,6 +25,7 @@ type VendorRepository interface {
 	FindMarketAssociation(ctx context.Context, id uuid.UUID) (*vendormodel.MarketAssociation, error)
 	ListMarketAssociations(ctx context.Context) ([]*vendormodel.MarketAssociation, error)
 	LogFreezeHistory(ctx context.Context, entityType string, entityID, actorID uuid.UUID, action, reason, actorRole string, isDemo bool) error
+	ActivateUser(ctx context.Context, userID uuid.UUID) error
 }
 
 // EventPublisher publishes domain events to the outbox.
@@ -133,6 +134,9 @@ func (s *VendorService) ApproveKYC(ctx context.Context, vendorID uuid.UUID, appr
 	if err := s.vendors.Update(ctx, vendor); err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
+
+	// Activate the linked user so the vendor can log in to the website
+	_ = s.vendors.ActivateUser(ctx, vendor.UserID)
 
 	return vendor, nil
 }

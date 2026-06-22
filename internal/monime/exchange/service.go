@@ -180,7 +180,7 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
 	pinHash := "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"
 	s.db.Exec(`INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified, is_demo, display_name)
-		VALUES (?, ?, ?, ?, 'VENDOR', true, false, false, ?) ON CONFLICT DO NOTHING`,
+		VALUES (?, ?, ?, ?, 'VENDOR', false, false, false, ?) ON CONFLICT DO NOTHING`,
 		userID, syntheticEmail, phone, pinHash, name)
 
 	_, err := s.vendorSvc.RegisterFromUSSD(ctx, vendorapp.USSDRegisterInput{
@@ -218,7 +218,7 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		PageData: map[string]interface{}{
 			"vendor_name": name,
 			"market_name": market,
-			"message":     fmt.Sprintf("Registration complete for %s at %s.\nPhone: %s\nUse this phone + your PIN (0000) to login on the website.", name, market, phone),
+			"message":     fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
 		},
 	}, nil
 }

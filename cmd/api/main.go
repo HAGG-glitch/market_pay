@@ -52,11 +52,6 @@ import (
 	repaypg   "github.com/marketpay/backend/internal/repayment/infrastructure/postgres"
 	repayhttp "github.com/marketpay/backend/internal/repayment/interfaces/http"
 
-	// Group
-	groupapp  "github.com/marketpay/backend/internal/group/application"
-	grouppg   "github.com/marketpay/backend/internal/group/infrastructure/postgres"
-	grouphttp "github.com/marketpay/backend/internal/group/interfaces/http"
-
 	// Payment
 	paymentapp  "github.com/marketpay/backend/internal/payment/application"
 	paymentpg   "github.com/marketpay/backend/internal/payment/infrastructure/postgres"
@@ -209,10 +204,8 @@ func main() {
 	repaySvc     := repayapp.NewRepaymentService(repayRepo, auditRepo, outboxPub, cfg.Repayment, log)
 	repayHandler := repayhttp.NewHandler(repaySvc)
 
-	// ── Group ─────────────────────────────────────────────────────────────
-	groupRepo    := grouppg.NewGroupRepo(db)
-	groupSvc     := groupapp.NewGroupService(groupRepo, outboxPub, log)
-	groupHandler := grouphttp.NewHandler(groupSvc)
+	// ── Group (coming soon) ──────────────────────────────────────────────
+	// Temporarily disabled until the group pay feature is properly planned.
 
 	// ── Monime Adapter ────────────────────────────────────────────────────
 	monimeAdapter := monimeinfra.NewMonimeAdapter(cfg.Monime, log)
@@ -332,7 +325,6 @@ func main() {
 	vendorHandler.RegisterRoutes(v1, jwtMW)
 	loanHandler.RegisterRoutes(v1, jwtMW)
 	repayHandler.RegisterRoutes(v1, jwtMW)
-	groupHandler.RegisterRoutes(v1, jwtMW)
 	paymentHandler.RegisterRoutes(v1, jwtMW)
 	reportHandler.RegisterRoutes(v1, jwtMW)
 	auditHandler.RegisterRoutes(v1, jwtMW)
