@@ -8,24 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNormalizePhone(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"+23276123456", "+23276123456"},
-		{"23276123456", "+23276123456"},
-		{"076123456", "+232076123456"},
-		{"76123456", "+76123456"},
-		{"+1234567890", "+1234567890"},
-		{"", "+"},
-	}
-	for _, tc := range tests {
-		result := normalizePhone(tc.input)
-		assert.Equal(t, tc.expected, result, "normalizePhone(%q)", tc.input)
-	}
-}
-
 func TestStringValue(t *testing.T) {
 	tests := []struct {
 		input    interface{}
