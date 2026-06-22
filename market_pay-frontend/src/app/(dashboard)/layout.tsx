@@ -14,7 +14,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isAuthenticated, user, hydrate } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+  const hydrate = useAuthStore((s) => s.hydrate);
   const hydrateMode = useModeStore((s) => s.hydrate);
 
   useEffect(() => {
@@ -23,12 +24,12 @@ export default function DashboardLayout({
     const loggedOut = sessionStorage.getItem("marketpay_logout") === "true";
     const mode = localStorage.getItem("marketpay_mode") || "demo";
 
-    if (!isAuthenticated && !loggedOut) {
+    if (!useAuthStore.getState().isAuthenticated && !loggedOut) {
       if (mode === "live") {
         router.replace("/login");
       }
     }
-  }, [isAuthenticated, hydrate, hydrateMode, router]);
+  }, [hydrate, hydrateMode, router]);
 
   if (!user) {
     return (
