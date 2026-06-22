@@ -45,7 +45,9 @@ export interface Loan {
 export enum LoanStatus {
   DRAFT = "DRAFT",
   PENDING_REVIEW = "PENDING_REVIEW",
+  UNDER_REVIEW = "UNDER_REVIEW",
   APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
   DISBURSED = "DISBURSED",
   ACTIVE = "ACTIVE",
   CLOSED = "CLOSED",

@@ -18,7 +18,9 @@ import { UserRole } from "@/types";
 const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
   DRAFT: "default",
   PENDING_REVIEW: "warning",
+  UNDER_REVIEW: "warning",
   APPROVED: "info",
+  REJECTED: "danger",
   DISBURSED: "info",
   ACTIVE: "success",
   CLOSED: "success",
