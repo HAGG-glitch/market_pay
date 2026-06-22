@@ -181,7 +181,7 @@ function Row({
   isDisburser,
   onRetry,
 }: {
-  loan: ReturnType<typeof useLoans>["data"]["data"][number];
+  loan: NonNullable<ReturnType<typeof useLoans>["data"]>["data"][number];
   i: number;
   isDisburser: boolean;
   onRetry: (id: string) => void;
