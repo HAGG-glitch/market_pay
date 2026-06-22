@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "pages": [
+    {
+      "id": "mp_access_gate_exchange",
+      "component": { "type": "side_effect" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {}
+      }
+    },
+    {
+      "id": "mp_select_service",
+      "component": {
+        "type": "menu",
+        "label": "Welcome to MarketPay\nSelect service",
+        "items": [
+          { "label": "My credit score", "value": "credit_score" },
+          { "label": "Apply for loan", "value": "loan_application" },
+          { "label": "Repay loan", "value": "repay_loan" },
+          { "label": "Check balance", "value": "balance_check" },
+          { "label": "Transaction history", "value": "transaction_history" },
+          { "label": "Exit", "value": "exit" }
+        ]
+      },
+      "on_done": {
+        "action": "next",
+        "session_context": {
+          "mutations": { "selected_service": "$(page.mp_select_service.value)" }
+        }
+      }
+    },
+    {
+      "id": "mp_credit_score_exchange",
+      "component": { "type": "side_effect" },
+      "options": { "skip": "$(sc.selected_service != \"credit_score\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": { "selected_service": "$(sc.selected_service)" }
+      }
+    },
+    {
+      "id": "mp_show_credit_score",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"credit_score\")" }
+    },
+    {
+      "id": "mp_collect_loan_amount",
+      "component": {
+        "type": "prompt",
+        "data_type": "integer",
+        "label": "Enter loan amount in SLE",
+        "min_value": 50,
+        "max_value": 5000000
+      },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "loan_amount": "$(page.mp_collect_loan_amount.value)" } }
+      }
+    },
+    {
+      "id": "mp_confirm_loan_application",
+      "component": {
+        "type": "menu",
+        "label": "Submit loan application?",
+        "items": [
+          { "label": "Submit", "value": "submit" },
+          { "label": "Cancel", "value": "cancel" }
+        ]
+      },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "loan_amount": "$(sc.loan_amount)",
+          "loan_confirmed": "$(page.mp_confirm_loan_application.value == \"submit\")"
+        },
+        "session_context": {
+          "mutations": { "loan_confirmed": "$(page.mp_confirm_loan_application.value == \"submit\")" }
+        }
+      }
+    },
+    {
+      "id": "mp_show_loan_application_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\" || sc.loan_confirmed != true)" }
+    },
+    {
+      "id": "mp_show_loan_application_cancelled",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"loan_application\" || sc.loan_confirmed == true)" }
+    },
+    {
+      "id": "mp_repay_loan_exchange",
+      "component": { "type": "side_effect" },
+      "options": { "skip": "$(sc.selected_service != \"repay_loan\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": { "selected_service": "$(sc.selected_service)" }
+      }
+    },
+    {
+      "id": "mp_collect_repayment_amount",
+      "component": {
+        "type": "prompt",
+        "data_type": "integer",
+        "label": "Enter amount to repay\nOutstanding: SLE $(data.balance)",
+        "min_value": 1,
+        "max_value": 10000000
+      },
+      "options": { "skip": "$(sc.selected_service != \"repay_loan\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "payment_amount": "$(page.mp_collect_repayment_amount.value)" } }
+      }
+    },
+    {
+      "id": "mp_confirm_repayment",
+      "component": {
+        "type": "menu",
+        "label": "Confirm repayment?",
+        "items": [
+          { "label": "Confirm & pay", "value": "confirm" },
+          { "label": "Cancel", "value": "cancel" }
+        ]
+      },
+      "options": { "skip": "$(sc.selected_service != \"repay_loan\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "payment_amount": "$(sc.payment_amount)",
+          "repayment_confirmed": "$(page.mp_confirm_repayment.value != \"cancel\")"
+        },
+        "session_context": {
+          "mutations": { "repayment_confirmed": "$(page.mp_confirm_repayment.value != \"cancel\")" }
+        }
+      }
+    },
+    {
+      "id": "mp_collect_repayment_pin",
+      "component": { "type": "collect_payment" },
+      "options": { "skip": "$(sc.selected_service != \"repay_loan\" || sc.repayment_confirmed != true)" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "payment_amount": "$(sc.payment_amount)"
+        }
+      }
+    },
+    {
+      "id": "mp_show_repayment_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"repay_loan\")" }
+    },
+    {
+      "id": "mp_show_repayment_cancelled",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"repay_loan\" || sc.repayment_confirmed == true)" }
+    },
+    {
+      "id": "mp_balance_exchange",
+      "component": { "type": "side_effect" },
+      "options": { "skip": "$(sc.selected_service != \"balance_check\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": { "selected_service": "$(sc.selected_service)" }
+      }
+    },
+    {
+      "id": "mp_show_balance_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"balance_check\")" }
+    },
+    {
+      "id": "mp_transaction_history_exchange",
+      "component": { "type": "side_effect" },
+      "options": { "skip": "$(sc.selected_service != \"transaction_history\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": { "selected_service": "$(sc.selected_service)" }
+      }
+    },
+    {
+      "id": "mp_show_transaction_history_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"transaction_history\")" }
+    },
+    {
+      "id": "mp_exit_service",
+      "component": { "type": "display", "label": "Thanks for using MarketPay." },
+      "options": { "skip": "$(sc.selected_service != \"exit\")" }
+    }
+  ]
+}

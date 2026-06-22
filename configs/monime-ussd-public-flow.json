@@ -1,0 +1,82 @@
+{
+  "version": "1.0",
+  "pages": [
+    {
+      "id": "mp_pub_enter_vendor_code",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter vendor code\n(e.g. MP12345)",
+        "min_length": 7,
+        "max_length": 12,
+        "pattern": "^MP[0-9]{5,10}$"
+      },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "payment_vendor_code": "$(page.mp_pub_enter_vendor_code.value)" } }
+      }
+    },
+    {
+      "id": "mp_pub_enter_amount",
+      "component": {
+        "type": "prompt",
+        "data_type": "integer",
+        "label": "Enter amount in SLE",
+        "min_value": 1,
+        "max_value": 10000000
+      },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "payment_amount": "$(page.mp_pub_enter_amount.value)" } }
+      }
+    },
+    {
+      "id": "mp_pub_confirm_payment",
+      "component": {
+        "type": "menu",
+        "label": "Pay SLE $(sc.payment_amount)\nto $(sc.payment_vendor_code)?",
+        "items": [
+          { "label": "Confirm & pay", "value": "confirm" },
+          { "label": "Cancel", "value": "cancel" }
+        ]
+      },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "pay_vendor",
+          "payment_vendor_code": "$(sc.payment_vendor_code)",
+          "payment_amount": "$(sc.payment_amount)",
+          "payment_confirmed": "$(page.mp_pub_confirm_payment.value != \"cancel\")"
+        },
+        "session_context": {
+          "mutations": { "payment_confirmed": "$(page.mp_pub_confirm_payment.value != \"cancel\")" }
+        }
+      }
+    },
+    {
+      "id": "mp_pub_collect_payment_pin",
+      "component": { "type": "collect_payment" },
+      "options": { "skip": "$(sc.payment_confirmed != true)" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "pay_vendor",
+          "payment_vendor_code": "$(sc.payment_vendor_code)",
+          "payment_amount": "$(sc.payment_amount)"
+        }
+      }
+    },
+    {
+      "id": "mp_pub_show_payment_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.payment_confirmed != true)" }
+    },
+    {
+      "id": "mp_pub_show_payment_cancelled",
+      "component": { "type": "display", "label": "Payment cancelled." },
+      "options": { "skip": "$(sc.payment_confirmed == true)" }
+    }
+  ]
+}

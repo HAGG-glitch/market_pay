@@ -118,6 +118,20 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 		return s.checkLoanEligibility(ctx, p)
 	case "mp_confirm_loan_application":
 		return s.applyLoan(ctx, p, sc)
+	case "mp_credit_score_exchange":
+		return s.handleCreditScore(ctx, p)
+	case "mp_repay_loan_exchange":
+		return s.handleRepayLoan(ctx, p)
+	case "mp_confirm_repayment":
+		return s.handleConfirmRepayment(ctx, sc)
+	case "mp_collect_repayment_pin":
+		return s.handleRepaymentResult(ctx, p, sc)
+	case "mp_transaction_history_exchange":
+		return s.handleTransactionHistory(ctx, p)
+	case "mp_pub_confirm_payment":
+		return s.handlePublicConfirmPayment(ctx, sc)
+	case "mp_pub_collect_payment_pin":
+		return s.handlePublicPaymentResult(ctx, p, sc)
 	case "mp_access_gate_exchange":
 		return s.handleAccessGateExchange(ctx, p)
 	default:
@@ -407,6 +421,176 @@ func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchang
 	return monimeexchange.NavigateResponse{
 		Action: "navigate",
 		PageID: "mp_select_service",
+	}, nil
+}
+
+func (s *Service) handleCreditScore(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
+	if err != nil || vendor == nil {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_show_credit_score",
+			PageData: map[string]interface{}{
+				"message": "No vendor account found. Please contact support.",
+			},
+		}, nil
+	}
+	return monimeexchange.NavigateResponse{
+		Action: "navigate",
+		PageID: "mp_show_credit_score",
+		PageData: map[string]interface{}{
+			"credit_score": vendor.CreditScore,
+			"message":      fmt.Sprintf("Your credit score: %.0f\nMaintain good repayment history to improve your score.", vendor.CreditScore),
+		},
+	}, nil
+}
+
+func (s *Service) handleRepayLoan(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
+	if err != nil || vendor == nil {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_collect_repayment_amount",
+			PageData: map[string]interface{}{
+				"balance": "0.00",
+			},
+		}, nil
+	}
+	var balance float64
+	s.db.Raw(`SELECT COALESCE(SUM(outstanding_amount), 0) FROM loans WHERE vendor_id = ? AND deleted_at IS NULL AND state IN ('ACTIVE','DISBURSED')`, vendor.ID).Scan(&balance)
+	return monimeexchange.NavigateResponse{
+		Action: "navigate",
+		PageID: "mp_collect_repayment_amount",
+		PageData: map[string]interface{}{
+			"balance": fmt.Sprintf("%.2f", balance),
+		},
+	}, nil
+}
+
+func (s *Service) handleConfirmRepayment(_ context.Context, sc map[string]interface{}) (interface{}, error) {
+	confirmed := stringValue(sc["repayment_confirmed"]) == "true"
+	if !confirmed {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_show_repayment_cancelled",
+			PageData: map[string]interface{}{
+				"message": "Repayment cancelled.",
+			},
+		}, nil
+	}
+	return monimeexchange.NavigateResponse{Action: "navigate", PageID: "mp_collect_repayment_pin"}, nil
+}
+
+func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
+	amountStr := stringValue(sc["payment_amount"])
+	ref := fmt.Sprintf("REPAY-%s-%d", p.Global.SessionID, time.Now().Unix())
+
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
+	if err == nil && vendor != nil {
+		s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "RepaymentReceived",
+			"USSD loan repayment",
+			fmt.Sprintf("Vendor %s repaid SLE %s. Ref: %s", vendor.FullName(), amountStr, ref), false)
+	}
+
+	return monimeexchange.NavigateResponse{
+		Action: "navigate",
+		PageID: "mp_show_repayment_result",
+		PageData: map[string]interface{}{
+			"reference": ref,
+			"message":   fmt.Sprintf("Repayment of SLE %s successful.\nRef: %s\nThank you.", amountStr, ref),
+		},
+	}, nil
+}
+
+func (s *Service) handleTransactionHistory(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
+	if err != nil || vendor == nil {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_show_transaction_history_result",
+			PageData: map[string]interface{}{
+				"message": "No vendor account found.",
+			},
+		}, nil
+	}
+
+	type LoanRecord struct {
+		Principal float64
+		State     string
+		CreatedAt time.Time
+	}
+	var loans []LoanRecord
+	s.db.Raw(`SELECT principal_amount, state, created_at FROM loans WHERE vendor_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 3`, vendor.ID).Scan(&loans)
+
+	if len(loans) == 0 {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_show_transaction_history_result",
+			PageData: map[string]interface{}{
+				"message": "No transaction history found.",
+			},
+		}, nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Recent transactions:\n")
+	for i, l := range loans {
+		friendlyState := l.State
+		switch l.State {
+		case "ACTIVE", "DISBURSED":
+			friendlyState = "Active"
+		case "PAID":
+			friendlyState = "Paid"
+		case "DRAFT":
+			friendlyState = "Pending"
+		case "REJECTED":
+			friendlyState = "Rejected"
+		}
+		sb.WriteString(fmt.Sprintf("%d. SLE %.0f - %s\n", i+1, l.Principal, friendlyState))
+	}
+
+	return monimeexchange.NavigateResponse{
+		Action: "navigate",
+		PageID: "mp_show_transaction_history_result",
+		PageData: map[string]interface{}{
+			"message": sb.String(),
+		},
+	}, nil
+}
+
+func (s *Service) handlePublicConfirmPayment(_ context.Context, sc map[string]interface{}) (interface{}, error) {
+	code := stringValue(sc["payment_vendor_code"])
+	amount := stringValue(sc["payment_amount"])
+	confirmed := stringValue(sc["payment_confirmed"]) == "true"
+
+	if !confirmed {
+		return monimeexchange.NavigateResponse{Action: "navigate", PageID: "mp_pub_show_payment_cancelled"}, nil
+	}
+	if !strings.HasPrefix(code, "MP") {
+		return monimeexchange.StopResponse{Action: "stop", Message: "Invalid vendor code."}, nil
+	}
+	if amount == "" {
+		return monimeexchange.StopResponse{Action: "stop", Message: "Invalid payment amount."}, nil
+	}
+	return monimeexchange.NavigateResponse{Action: "navigate", PageID: "mp_pub_collect_payment_pin"}, nil
+}
+
+func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
+	code := stringValue(sc["payment_vendor_code"])
+	amountStr := stringValue(sc["payment_amount"])
+	ref := fmt.Sprintf("USSD-%s-%d", p.Global.SessionID, time.Now().Unix())
+
+	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "PaymentReceived",
+		"USSD public payment",
+		fmt.Sprintf("Customer paid SLE %s to %s. Ref: %s", amountStr, code, ref), false)
+
+	return monimeexchange.NavigateResponse{
+		Action: "navigate",
+		PageID: "mp_pub_show_payment_result",
+		PageData: map[string]interface{}{
+			"reference": ref,
+			"message":   fmt.Sprintf("Payment of SLE %s to %s successful.\nRef: %s\nThank you.", amountStr, code, ref),
+		},
 	}, nil
 }
 
