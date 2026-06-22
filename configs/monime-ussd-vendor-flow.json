@@ -53,7 +53,7 @@
         "data_type": "integer",
         "label": "Enter loan amount in SLE",
         "min_value": 1,
-        "max_value": 5000000
+        "max_value": 50
       },
       "options": { "skip": "$(sc.selected_service != \"loan_application\")" },
       "on_done": {
