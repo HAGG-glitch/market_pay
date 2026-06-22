@@ -267,27 +267,23 @@ export default function LoanDetailPage() {
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900">Disburse Loan</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Enter the Monime reference for this disbursement.
+              Leave blank to auto-disburse via Monime Payout, or enter a reference manually.
             </p>
             <div className="mt-4">
               <Input
                 id="monimeRef"
-                label="Monime Reference"
+                label="Monime Reference (optional)"
                 value={monimeRef}
                 onChange={(e) => setMonimeRef(e.target.value)}
-                placeholder="Enter Monime transaction reference"
-                required
+                placeholder="Auto-generated if left blank"
               />
             </div>
             <div className="mt-4 flex gap-3 justify-end">
               <Button variant="outline" onClick={() => { setDisburseModal(false); setMonimeRef(""); }}>
                 Cancel
               </Button>
-              <Button
-                onClick={handleDisburse}
-                disabled={!monimeRef}
-              >
-                Confirm Disburse
+              <Button onClick={handleDisburse}>
+                {monimeRef ? "Disburse with Reference" : "Auto-Disburse"}
               </Button>
             </div>
           </div>
