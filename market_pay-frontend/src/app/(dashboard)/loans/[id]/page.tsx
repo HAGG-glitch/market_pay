@@ -28,7 +28,7 @@ const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "
 };
 
 const canReview: UserRole[] = [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
-const canDisburse: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+const canDisburse: UserRole[] = [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 export default function LoanDetailPage() {
   const params = useParams();

@@ -35,7 +35,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 		loans.GET("/:id/schedule", h.GetSchedule)
 		loans.PUT("/:id/approve", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Approve)
 		loans.PUT("/:id/reject", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Reject)
-		loans.PUT("/:id/disburse", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin), h.Disburse)
+		loans.PUT("/:id/disburse", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Disburse)
 		loans.GET("/vendor/:vendor_id", h.GetVendorLoans)
 	}
 }
