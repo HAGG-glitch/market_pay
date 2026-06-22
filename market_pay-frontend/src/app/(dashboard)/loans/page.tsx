@@ -204,7 +204,6 @@ function Row({
     (loan.status === "DISBURSED" || (loan.status === "APPROVED" && !loan.monime_reference));
 
   const payoutFailed = loan.status === "DISBURSED" && !loan.monime_reference;
-  const showActions = canRetry || payoutFailed;
 
   const sourceBadgeColor = loan.source === "USSD" ? "default" : "info";
 
@@ -259,7 +258,7 @@ function Row({
           >
             <MoreVertical size={16} className="text-gray-500" />
           </button>
-          {menuOpen && showActions && (
+          {menuOpen && (
             <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg border bg-white py-1 shadow-lg">
               {canRetry && (
                 <button
