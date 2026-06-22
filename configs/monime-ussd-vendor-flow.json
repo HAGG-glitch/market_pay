@@ -146,7 +146,16 @@
     },
     {
       "id": "mp_collect_repayment_pin",
-      "component": { "type": "collect_payment" },
+      "component": {
+        "type": "template",
+        "label": "Processing payment of SLE $(sc.payment_amount)...",
+        "template_name": "collect_payment",
+        "template_data": {
+          "amount": "$(sc.payment_amount)",
+          "currency": "SLE",
+          "description": "Loan repayment"
+        }
+      },
       "options": { "skip": "$(sc.selected_service != \"repay_loan\" || sc.repayment_confirmed != true)" },
       "on_done": {
         "action": "exchange",
