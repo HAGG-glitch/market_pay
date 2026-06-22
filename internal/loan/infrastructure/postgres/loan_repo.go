@@ -73,10 +73,13 @@ func (r *LoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, i
 	var loans []*loanmodel.Loan
 	var count int64
 
-	r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("state = ? AND is_demo = ?", state, isDemo).Count(&count)
+	query := r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("is_demo = ?", isDemo)
+	if state != "" {
+		query = query.Where("state = ?", state)
+	}
+	query.Count(&count)
 
-	err := r.db.WithContext(ctx).
-		Where("state = ? AND is_demo = ?", state, isDemo).
+	err := query.
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&loans).Error

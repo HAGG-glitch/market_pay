@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useLoans } from "@/hooks/use-loans";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,8 +22,16 @@ const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "
 };
 
 export default function LoansPage() {
-  const { data: loansData } = useLoans();
+  const [statusFilter, setStatusFilter] = useState("PENDING_REVIEW");
+  const { data: loansData } = useLoans({ status: statusFilter });
   const loans = loansData?.data || [];
+
+  const stateTabs = [
+    { label: "Pending Review", value: "PENDING_REVIEW" },
+    { label: "Approved", value: "APPROVED" },
+    { label: "Disbursed", value: "DISBURSED" },
+    { label: "All", value: "" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -37,6 +46,22 @@ export default function LoansPage() {
             Apply for Loan
           </Button>
         </Link>
+      </div>
+
+      <div className="flex gap-2">
+        {stateTabs.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setStatusFilter(tab.value)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              statusFilter === tab.value
+                ? "bg-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <Card>
