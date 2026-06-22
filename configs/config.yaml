@@ -72,7 +72,7 @@ credit_score:
   market_association_weight: 10
   kyc_completeness_weight: 10
   group_bonus: 5
-  min_score: 50
+  min_score: 0
   auto_approve_score: 75
 
 loans:
