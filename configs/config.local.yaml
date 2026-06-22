@@ -38,9 +38,9 @@ monime:
   timeout: "30s"
   payout:
     base_url: "https://api.monime.io"
-    api_key: "monime-payout-api-key-placeholder"
-    space_id: "spc-placeholder"
-    financial_account_id: "fa-placeholder"
+    api_key: "mon_r3uE6qiru5ors0jRr6SYE8ZeBHnzcXxjnpCJdNKxvGMgdpGRzShmZo244hZVtiux"
+    space_id: "spc-k6H2sQ24FLCo1nDYSKtwc7k2wd2"
+    financial_account_id: "fac-k6H2sQ5FupshuawYAGKSFJNGqUF"
     provider_id: "m18"
     timeout: "30s"
 
