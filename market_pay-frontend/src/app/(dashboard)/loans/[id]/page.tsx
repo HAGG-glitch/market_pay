@@ -150,7 +150,7 @@ export default function LoanDetailPage() {
         </Card>
       </div>
 
-      {isReviewer && loan.status === "PENDING_REVIEW" && (
+      {isReviewer && (loan.status === "PENDING_REVIEW" || loan.status === "UNDER_REVIEW") && (
         <Card>
           <CardHeader>
             <CardTitle>Actions</CardTitle>
