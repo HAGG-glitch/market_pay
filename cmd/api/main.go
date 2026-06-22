@@ -93,6 +93,7 @@ import (
 	notifhttp "github.com/marketpay/backend/internal/notification/interfaces/http"
 
 	"github.com/marketpay/backend/pkg/monimeexchange"
+	"github.com/marketpay/backend/pkg/monimepayout"
 	"github.com/marketpay/backend/pkg/realtime"
 )
 
@@ -179,9 +180,24 @@ func main() {
 	factorRepo := scorepg.NewFactorRepo(db)
 	scoreSvc   := scoreapp.NewService(scoreRepo, factorRepo, cfg.CreditScore, log)
 
+	// ── Monime Payout ────────────────────────────────────────────────────
+	payoutClient := monimepayout.NewClient(monimepayout.Config{
+		BaseURL:            cfg.Monime.Payout.BaseURL,
+		APIKey:             cfg.Monime.Payout.APIKey,
+		SpaceID:            cfg.Monime.Payout.SpaceID,
+		FinancialAccountID: cfg.Monime.Payout.FinancialAccountID,
+		ProviderID:         cfg.Monime.Payout.ProviderID,
+		Timeout:            cfg.Monime.Payout.Timeout,
+	})
+
 	// ── Loan ──────────────────────────────────────────────────────────────
 	loanRepo    := loanpg.NewLoanRepo(db)
-	loanSvc     := loanapp.NewLoanService(loanRepo, auditRepo, outboxPub, scoreSvc, vendorSvc, cfg.Loans, cfg.CreditScore, log)
+	vendorPhoneAdapter := &vendorPhoneFinderAdapter{vendorSvc: vendorSvc}
+	payoutAdapter := &monimePayoutAdapter{
+		client: payoutClient,
+		cfg:    cfg.Monime.Payout,
+	}
+	loanSvc     := loanapp.NewLoanService(loanRepo, auditRepo, outboxPub, scoreSvc, vendorSvc, vendorPhoneAdapter, payoutAdapter, cfg.Loans, cfg.CreditScore, log)
 	loanHandler := loanhttp.NewHandler(loanSvc)
 
 	// ── Repayment ─────────────────────────────────────────────────────────
@@ -434,6 +450,43 @@ func newUSSDLoanAdapter(svc *loanapp.LoanService) *ussdLoanAdapter {
 
 func (a *ussdLoanAdapter) ApplyUSSD(ctx context.Context, phone, loanType string, amount float64) (string, error) {
 	return fmt.Sprintf("Loan application submitted. Type: %s. Amount: %.2f SLE. You will receive an SMS shortly.", loanType, amount), nil
+}
+
+// vendorPhoneFinderAdapter adapts VendorService to loanapp.VendorPhoneFinder.
+type vendorPhoneFinderAdapter struct {
+	vendorSvc *vendorapp.VendorService
+}
+
+func (a *vendorPhoneFinderAdapter) FindPhoneByID(ctx context.Context, vendorID uuid.UUID) (string, error) {
+	v, err := a.vendorSvc.GetByID(ctx, vendorID)
+	if err != nil {
+		return "", err
+	}
+	return v.Phone, nil
+}
+
+// monimePayoutAdapter adapts monimepayout.Client to loanapp.MonimePayoutDisburser.
+type monimePayoutAdapter struct {
+	client *monimepayout.Client
+	cfg    config.MonimePayoutConfig
+}
+
+func (a *monimePayoutAdapter) Disburse(ctx context.Context, phone string, amount float64) (string, error) {
+	req := monimepayout.PayoutRequest{
+		Amount:      monimepayout.SLEAmount(amount),
+		Destination: monimepayout.MomoDestination(phone, a.cfg.ProviderID),
+		Source: &monimepayout.Source{
+			FinancialAccountID: a.cfg.FinancialAccountID,
+		},
+		Metadata: map[string]string{
+			"purpose": "loan_disbursement",
+		},
+	}
+	resp, err := a.client.CreatePayout(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return resp.Result.ID, nil
 }
 
 // monimeCollectorAdapter adapts MonimeAdapter to paymentapp.MonimeCollector.

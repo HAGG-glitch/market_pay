@@ -36,6 +36,13 @@ monime:
   webhook_secret: "monime-webhook-secret"
   rsa_private_key_pem: ""
   timeout: "30s"
+  payout:
+    base_url: "https://api.monime.io"
+    api_key: "monime-payout-api-key-placeholder"
+    space_id: "spc-placeholder"
+    financial_account_id: "fa-placeholder"
+    provider_id: "m18"
+    timeout: "30s"
 
 ussd:
   session_timeout: "5m"

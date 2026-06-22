@@ -94,7 +94,7 @@ func newTestLoanService(
 	}
 	scoreCfg := config.CreditScoreConfig{MinScore: 50, AutoApproveScore: 75}
 	log := logger.NewNop()
-	return loanapp.NewLoanService(repo, audit, events, score, eligibility, cfg, scoreCfg, log)
+	return loanapp.NewLoanService(repo, audit, events, score, eligibility, nil, nil, cfg, scoreCfg, log)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

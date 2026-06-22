@@ -59,7 +59,7 @@ type rejectLoanRequest struct {
 }
 
 type disburseLoanRequest struct {
-	MonimeReference string `json:"monime_reference" binding:"required"`
+	MonimeReference string `json:"monime_reference"`
 }
 
 // Apply godoc
@@ -222,7 +222,7 @@ func (h *Handler) Reject(c *gin.Context) {
 // @Tags loans
 // @Security BearerAuth
 // @Param id path string true "Loan ID"
-// @Param body body disburseLoanRequest true "Monime reference"
+// @Param body body disburseLoanRequest false "Optional manual Monime reference"
 // @Success 200 {object} loanmodel.Loan
 // @Router /loans/{id}/disburse [put]
 func (h *Handler) Disburse(c *gin.Context) {
@@ -233,12 +233,14 @@ func (h *Handler) Disburse(c *gin.Context) {
 	}
 
 	var req disburseLoanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	_ = c.ShouldBindJSON(&req)
 
-	loan, err := h.loanSvc.Disburse(c.Request.Context(), id, req.MonimeReference)
+	var loan *loanmodel.Loan
+	if req.MonimeReference != "" {
+		loan, err = h.loanSvc.Disburse(c.Request.Context(), id, req.MonimeReference)
+	} else {
+		loan, err = h.loanSvc.DisburseWithPayout(c.Request.Context(), id)
+	}
 	if err != nil {
 		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
 		return

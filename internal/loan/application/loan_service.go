@@ -46,16 +46,28 @@ type VendorEligibilityChecker interface {
 	CheckEligibility(ctx context.Context, vendorID uuid.UUID) error
 }
 
+// VendorPhoneFinder looks up a vendor's phone number by ID.
+type VendorPhoneFinder interface {
+	FindPhoneByID(ctx context.Context, vendorID uuid.UUID) (string, error)
+}
+
+// MonimePayoutDisburser sends money to a vendor via Monime Payout API.
+type MonimePayoutDisburser interface {
+	Disburse(ctx context.Context, phone string, amount float64) (string, error)
+}
+
 // LoanService handles loan origination and lifecycle.
 type LoanService struct {
-	loans       LoanRepository
-	audit       AuditRepository
-	events      EventPublisher
-	creditScore CreditScoreService
-	eligibility VendorEligibilityChecker
-	cfg         config.LoanProductsConfig
-	scoreCfg    config.CreditScoreConfig
-	log         *logger.Logger
+	loans            LoanRepository
+	audit            AuditRepository
+	events           EventPublisher
+	creditScore      CreditScoreService
+	eligibility      VendorEligibilityChecker
+	vendorPhone      VendorPhoneFinder
+	monimePayout     MonimePayoutDisburser
+	cfg              config.LoanProductsConfig
+	scoreCfg         config.CreditScoreConfig
+	log              *logger.Logger
 }
 
 // NewLoanService constructs a LoanService.
@@ -65,19 +77,23 @@ func NewLoanService(
 	events EventPublisher,
 	creditScore CreditScoreService,
 	eligibility VendorEligibilityChecker,
+	vendorPhone VendorPhoneFinder,
+	monimePayout MonimePayoutDisburser,
 	cfg config.LoanProductsConfig,
 	scoreCfg config.CreditScoreConfig,
 	log *logger.Logger,
 ) *LoanService {
 	return &LoanService{
-		loans:       loans,
-		audit:       audit,
-		events:      events,
-		creditScore: creditScore,
-		eligibility: eligibility,
-		cfg:         cfg,
-		scoreCfg:    scoreCfg,
-		log:         log,
+		loans:        loans,
+		audit:        audit,
+		events:       events,
+		creditScore:  creditScore,
+		eligibility:  eligibility,
+		vendorPhone:  vendorPhone,
+		monimePayout: monimePayout,
+		cfg:          cfg,
+		scoreCfg:     scoreCfg,
+		log:          log,
 	}
 }
 
@@ -291,6 +307,26 @@ func (s *LoanService) Disburse(ctx context.Context, loanID uuid.UUID, monimeRef 
 	})
 
 	return loan, nil
+}
+
+// DisburseWithPayout calls Monime Payout API and records the disbursement.
+func (s *LoanService) DisburseWithPayout(ctx context.Context, loanID uuid.UUID) (*loanmodel.Loan, error) {
+	loan, err := s.loans.FindByID(ctx, loanID)
+	if err != nil {
+		return nil, apperrors.ErrNotFound("loan")
+	}
+
+	phone, err := s.vendorPhone.FindPhoneByID(ctx, loan.VendorID)
+	if err != nil {
+		return nil, apperrors.ErrInternalServer(fmt.Errorf("lookup vendor phone: %w", err))
+	}
+
+	monimeRef, err := s.monimePayout.Disburse(ctx, phone, loan.PrincipalAmount)
+	if err != nil {
+		return nil, apperrors.ErrInternalServer(fmt.Errorf("monime payout failed: %w", err))
+	}
+
+	return s.Disburse(ctx, loanID, monimeRef)
 }
 
 // GetByID retrieves a loan by ID.
