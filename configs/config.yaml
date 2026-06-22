@@ -83,7 +83,7 @@ loans:
     interest_rate: 0.05
     auto_approve: true
   starter_loan:
-    min_amount: 500
+    min_amount: 1
     max_amount: 2000
     term_weeks_min: 4
     term_weeks_max: 8
