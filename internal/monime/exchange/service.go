@@ -143,6 +143,7 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 }
 
 func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
+	s.log.Info("vendor registration", zap.String("session", p.Global.SessionID), zap.String("name", stringValue(sc["registration_vendor_name"])), zap.String("market", stringValue(sc["registration_market_name"])))
 	name := stringValue(sc["registration_vendor_name"])
 	market := stringValue(sc["registration_market_name"])
 	phone := normalizePhone(p.Global.SubscriberMsisdn)
@@ -205,10 +206,11 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 	}, nil
 }
 
-func (s *Service) validatePayment(_ context.Context, sc map[string]interface{}) (interface{}, error) {
+func (s *Service) validatePayment(ctx context.Context, sc map[string]interface{}) (interface{}, error) {
 	code := stringValue(sc["payment_vendor_code"])
 	amount := stringValue(sc["payment_amount"])
 	confirmed := stringValue(sc["payment_confirmed"]) == "true"
+	s.log.Info("validate payment", zap.String("code", code), zap.String("amount", amount), zap.Bool("confirmed", confirmed))
 
 	if !confirmed {
 		return monimeexchange.NavigateResponse{Action: "navigate", PageID: "mp_show_payment_cancelled"}, nil
@@ -226,6 +228,7 @@ func (s *Service) processPayment(ctx context.Context, p *monimeexchange.Exchange
 	code := stringValue(sc["payment_vendor_code"])
 	amountStr := stringValue(sc["payment_amount"])
 	sendSMS := stringValue(sc["payment_send_sms_receipt"]) == "true"
+	s.log.Info("process payment", zap.String("session", p.Global.SessionID), zap.String("code", code), zap.String("amount", amountStr))
 
 	var amount float64
 	fmt.Sscanf(amountStr, "%f", &amount)
@@ -265,6 +268,7 @@ func (s *Service) processPayment(ctx context.Context, p *monimeexchange.Exchange
 }
 
 func (s *Service) checkBalance(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	s.log.Info("balance check", zap.String("session", p.Global.SessionID))
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.NavigateResponse{
@@ -291,6 +295,7 @@ func (s *Service) checkBalance(ctx context.Context, p *monimeexchange.ExchangePa
 }
 
 func (s *Service) checkLoanEligibility(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	s.log.Info("loan eligibility check", zap.String("session", p.Global.SessionID))
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.NavigateResponse{
@@ -323,6 +328,7 @@ func (s *Service) checkLoanEligibility(ctx context.Context, p *monimeexchange.Ex
 }
 
 func (s *Service) applyLoan(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
+	s.log.Info("loan application", zap.String("session", p.Global.SessionID), zap.String("amount", stringValue(sc["loan_amount"])), zap.String("confirmed", stringValue(sc["loan_confirmed"])))
 	if stringValue(sc["loan_confirmed"]) != "true" {
 		return monimeexchange.NavigateResponse{Action: "navigate", PageID: "mp_show_loan_application_cancelled"}, nil
 	}
@@ -425,6 +431,7 @@ func (s *Service) handleAccessGateExchange(ctx context.Context, p *monimeexchang
 }
 
 func (s *Service) handleCreditScore(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	s.log.Info("credit score request", zap.String("session", p.Global.SessionID))
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.NavigateResponse{
@@ -446,6 +453,7 @@ func (s *Service) handleCreditScore(ctx context.Context, p *monimeexchange.Excha
 }
 
 func (s *Service) handleRepayLoan(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	s.log.Info("repay loan request", zap.String("session", p.Global.SessionID))
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.NavigateResponse{
@@ -467,8 +475,9 @@ func (s *Service) handleRepayLoan(ctx context.Context, p *monimeexchange.Exchang
 	}, nil
 }
 
-func (s *Service) handleConfirmRepayment(_ context.Context, sc map[string]interface{}) (interface{}, error) {
+func (s *Service) handleConfirmRepayment(ctx context.Context, sc map[string]interface{}) (interface{}, error) {
 	confirmed := stringValue(sc["repayment_confirmed"]) == "true"
+	s.log.Info("confirm repayment", zap.Bool("confirmed", confirmed), zap.String("amount", stringValue(sc["payment_amount"])))
 	if !confirmed {
 		return monimeexchange.NavigateResponse{
 			Action: "navigate",
@@ -484,6 +493,7 @@ func (s *Service) handleConfirmRepayment(_ context.Context, sc map[string]interf
 func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
 	amountStr := stringValue(sc["payment_amount"])
 	ref := fmt.Sprintf("REPAY-%s-%d", p.Global.SessionID, time.Now().Unix())
+	s.log.Info("repayment result", zap.String("session", p.Global.SessionID), zap.String("amount", amountStr), zap.String("ref", ref))
 
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err == nil && vendor != nil {
@@ -503,6 +513,7 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 }
 
 func (s *Service) handleTransactionHistory(ctx context.Context, p *monimeexchange.ExchangePayload) (interface{}, error) {
+	s.log.Info("transaction history request", zap.String("session", p.Global.SessionID))
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
 		return monimeexchange.NavigateResponse{
@@ -558,10 +569,11 @@ func (s *Service) handleTransactionHistory(ctx context.Context, p *monimeexchang
 	}, nil
 }
 
-func (s *Service) handlePublicConfirmPayment(_ context.Context, sc map[string]interface{}) (interface{}, error) {
+func (s *Service) handlePublicConfirmPayment(ctx context.Context, sc map[string]interface{}) (interface{}, error) {
 	code := stringValue(sc["payment_vendor_code"])
 	amount := stringValue(sc["payment_amount"])
 	confirmed := stringValue(sc["payment_confirmed"]) == "true"
+	s.log.Info("public confirm payment", zap.String("code", code), zap.String("amount", amount), zap.Bool("confirmed", confirmed))
 
 	if !confirmed {
 		return monimeexchange.NavigateResponse{Action: "navigate", PageID: "mp_pub_show_payment_cancelled"}, nil
@@ -579,6 +591,7 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 	code := stringValue(sc["payment_vendor_code"])
 	amountStr := stringValue(sc["payment_amount"])
 	ref := fmt.Sprintf("USSD-%s-%d", p.Global.SessionID, time.Now().Unix())
+	s.log.Info("public payment result", zap.String("session", p.Global.SessionID), zap.String("code", code), zap.String("amount", amountStr), zap.String("ref", ref))
 
 	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "PaymentReceived",
 		"USSD public payment",
