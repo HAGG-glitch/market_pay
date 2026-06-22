@@ -30,16 +30,17 @@ const (
 type LoanState string
 
 const (
-	LoanStateDraft          LoanState = "DRAFT"
-	LoanStatePendingReview  LoanState = "PENDING_REVIEW"
-	LoanStateAutoApproved   LoanState = "AUTO_APPROVED"
-	LoanStateUnderReview    LoanState = "UNDER_REVIEW"
-	LoanStateApproved       LoanState = "APPROVED"
-	LoanStateRejected       LoanState = "REJECTED"
-	LoanStateDisbursed      LoanState = "DISBURSED"
-	LoanStateActive         LoanState = "ACTIVE"
-	LoanStateClosed         LoanState = "CLOSED"
-	LoanStateDefaulted      LoanState = "DEFAULTED"
+	LoanStateDraft               LoanState = "DRAFT"
+	LoanStatePendingReview       LoanState = "PENDING_REVIEW"
+	LoanStateAutoApproved        LoanState = "AUTO_APPROVED"
+	LoanStateUnderReview         LoanState = "UNDER_REVIEW"
+	LoanStateApproved            LoanState = "APPROVED"
+	LoanStateRejected            LoanState = "REJECTED"
+	LoanStateDisbursementPending LoanState = "DISBURSEMENT_PENDING"
+	LoanStateDisbursed           LoanState = "DISBURSED"
+	LoanStateActive              LoanState = "ACTIVE"
+	LoanStateClosed              LoanState = "CLOSED"
+	LoanStateDefaulted           LoanState = "DEFAULTED"
 )
 
 // InterestType determines how interest is calculated.
@@ -69,16 +70,17 @@ const (
 
 // validTransitions defines the state machine rules.
 var validTransitions = map[LoanState][]LoanState{
-	LoanStateDraft:         {LoanStatePendingReview},
-	LoanStatePendingReview: {LoanStateAutoApproved, LoanStateUnderReview, LoanStateApproved, LoanStateRejected},
-	LoanStateAutoApproved:  {LoanStateDisbursed, LoanStateRejected},
-	LoanStateUnderReview:   {LoanStateApproved, LoanStateRejected},
-	LoanStateApproved:      {LoanStateDisbursed},
-	LoanStateRejected:      {},
-	LoanStateDisbursed:     {LoanStateActive, LoanStateApproved},
-	LoanStateActive:        {LoanStateClosed, LoanStateDefaulted, LoanStateApproved},
-	LoanStateClosed:        {},
-	LoanStateDefaulted:     {LoanStateClosed},
+	LoanStateDraft:               {LoanStatePendingReview},
+	LoanStatePendingReview:       {LoanStateAutoApproved, LoanStateUnderReview, LoanStateApproved, LoanStateRejected},
+	LoanStateAutoApproved:        {LoanStateDisbursed, LoanStateRejected},
+	LoanStateUnderReview:         {LoanStateApproved, LoanStateRejected},
+	LoanStateApproved:            {LoanStateDisbursementPending, LoanStateDisbursed},
+	LoanStateRejected:            {},
+	LoanStateDisbursementPending: {LoanStateActive, LoanStateApproved, LoanStateDisbursed},
+	LoanStateDisbursed:           {LoanStateActive, LoanStateApproved},
+	LoanStateActive:              {LoanStateClosed, LoanStateDefaulted, LoanStateApproved},
+	LoanStateClosed:              {},
+	LoanStateDefaulted:           {LoanStateClosed},
 }
 
 // Loan is the aggregate root for the loan bounded context.
@@ -106,7 +108,10 @@ type Loan struct {
 	ReviewedBy        *uuid.UUID         `gorm:"type:uuid" json:"reviewed_by,omitempty"`
 	ReviewNote        string             `gorm:"type:text" json:"review_note,omitempty"`
 	RejectionReason   string             `gorm:"type:text" json:"rejection_reason,omitempty"`
-	MonimeReference   string             `gorm:"type:varchar(255);index" json:"monime_reference,omitempty"`
+	MonimeReference      string             `gorm:"type:varchar(255);index" json:"monime_reference,omitempty"`
+	PayoutID             string             `gorm:"type:varchar(255)" json:"payout_id,omitempty"`
+	ProviderRef          string             `gorm:"type:varchar(255)" json:"provider_ref,omitempty"`
+	FailureReason        string             `gorm:"type:text" json:"failure_reason,omitempty"`
 	Schedules         []RepaymentSchedule `gorm:"foreignKey:LoanID" json:"schedules,omitempty"`
 	Currency          string             `gorm:"type:varchar(10);not null;default:'SLE'" json:"currency"`
 	IsDemo            bool               `gorm:"default:false" json:"is_demo"`

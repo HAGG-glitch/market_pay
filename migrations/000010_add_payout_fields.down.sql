@@ -1,0 +1,3 @@
+ALTER TABLE loans DROP COLUMN IF EXISTS payout_id;
+ALTER TABLE loans DROP COLUMN IF EXISTS provider_ref;
+ALTER TABLE loans DROP COLUMN IF EXISTS failure_reason;

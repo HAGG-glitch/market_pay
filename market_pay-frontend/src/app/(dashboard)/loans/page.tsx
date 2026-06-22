@@ -19,6 +19,7 @@ const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "
   UNDER_REVIEW: "warning",
   APPROVED: "info",
   REJECTED: "danger",
+  DISBURSEMENT_PENDING: "default",
   DISBURSED: "info",
   ACTIVE: "success",
   CLOSED: "success",
@@ -49,7 +50,7 @@ export default function LoansPage() {
   const stateTabs = [
     { label: "Pending Review", value: "PENDING_REVIEW" },
     { label: "Approved", value: "APPROVED" },
-    { label: "Disbursed", value: "DISBURSED" },
+    { label: "Pending Disburse", value: "DISBURSEMENT_PENDING" },
     { label: "Active", value: "ACTIVE" },
     { label: "All", value: "" },
   ];
@@ -201,9 +202,10 @@ function Row({
 
   const canRetry =
     isDisburser &&
-    (loan.status === "DISBURSED" || (loan.status === "APPROVED" && !loan.monime_reference));
+    ((loan.status === "APPROVED" && !loan.monime_reference) || loan.status === "DISBURSED");
 
-  const payoutFailed = loan.status === "DISBURSED" && !loan.monime_reference;
+  const payoutPending = loan.status === "DISBURSEMENT_PENDING";
+  const payoutFailed = (loan.status === "APPROVED" && !loan.monime_reference) || (loan.status === "DISBURSED" && !loan.monime_reference);
 
   const sourceBadgeColor = loan.source === "USSD" ? "default" : "info";
 
@@ -235,6 +237,11 @@ function Row({
           <span className="flex items-center gap-1">
             <CheckCircle size={12} className="text-green-500" />
             {loan.monime_reference.slice(0, 12)}...
+          </span>
+        ) : payoutPending ? (
+          <span className="flex items-center gap-1 text-yellow-500">
+            <Clock size={12} />
+            Processing
           </span>
         ) : payoutFailed ? (
           <span className="flex items-center gap-1 text-red-500">

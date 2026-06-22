@@ -250,7 +250,7 @@ func main() {
 	notifHandler := notifhttp.NewHandler(db, eventHub)
 
 	// ── Monime USSD Exchange ────────────────────────────────────────────────
-	monimeWebhook := monimehttp.NewWebhookHandler(db, paymentSvc, monimeAdapter)
+	monimeWebhook := monimehttp.NewWebhookHandler(db, paymentSvc, monimeAdapter, loanSvc, log)
 
 		var monimeHandler *monimehttp.Handler
 	keyLoaded := false

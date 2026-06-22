@@ -12,7 +12,7 @@ import { disburseLoan } from "@/lib/api/loan.service";
 import { useAuthStore } from "@/store/auth.store";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, RefreshCw, AlertCircle } from "lucide-react";
 import { UserRole } from "@/types";
 
 const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
@@ -21,6 +21,7 @@ const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "
   UNDER_REVIEW: "warning",
   APPROVED: "info",
   REJECTED: "danger",
+  DISBURSEMENT_PENDING: "default",
   DISBURSED: "info",
   ACTIVE: "success",
   CLOSED: "success",
@@ -33,7 +34,7 @@ const canDisburse: UserRole[] = [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole
 const timelineStages = [
   { key: "PENDING_REVIEW", label: "Requested", icon: Clock },
   { key: "APPROVED", label: "Approved", icon: CheckCircle },
-  { key: "DISBURSED", label: "Disbursement", icon: RefreshCw },
+  { key: "DISBURSEMENT_PENDING", label: "Disbursing", icon: RefreshCw },
   { key: "ACTIVE", label: "Active", icon: CheckCircle },
   { key: "CLOSED", label: "Completed", icon: CheckCircle },
 ];
@@ -103,7 +104,7 @@ export default function LoanDetailPage() {
 
   const stageTimestamps: Record<string, string | undefined> = {
     PENDING_REVIEW: loan.created_at,
-    DISBURSED: loan.disbursed_at,
+    DISBURSEMENT_PENDING: loan.disbursed_at,
   };
 
   return (
@@ -204,39 +205,61 @@ export default function LoanDetailPage() {
         </Card>
       )}
 
-      {loan.monime_reference && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Payout Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
+      <Card>
+        <CardHeader>
+          <CardTitle>Payout Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Status</span>
+              <span className="flex items-center gap-1">
+                {loan.status === "ACTIVE" ? (
+                  <><CheckCircle size={14} className="text-green-500" /> Successful</>
+                ) : loan.status === "DISBURSEMENT_PENDING" ? (
+                  <><RefreshCw size={14} className="text-yellow-500" /> Processing</>
+                ) : loan.status === "APPROVED" && loan.failure_reason ? (
+                  <><AlertCircle size={14} className="text-red-500" /> Failed</>
+                ) : loan.monime_reference ? (
+                  <><Clock size={14} className="text-gray-400" /> Pending</>
+                ) : (
+                  <><Clock size={14} className="text-gray-300" /> Not disbursed</>
+                )}
+              </span>
+            </div>
+            {loan.monime_reference && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Monime Reference</span>
                 <span className="font-mono text-xs">{loan.monime_reference}</span>
               </div>
-              {loan.disbursed_at && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Disbursed At</span>
-                  <span>{formatDate(loan.disbursed_at)}</span>
-                </div>
-              )}
+            )}
+            {loan.payout_id && (
               <div className="flex justify-between">
-                <span className="text-gray-500">Status</span>
-                <span className="flex items-center gap-1">
-                  {loan.status === "ACTIVE" ? (
-                    <><CheckCircle size={14} className="text-green-500" /> Successful</>
-                  ) : loan.status === "DISBURSED" ? (
-                    <><RefreshCw size={14} className="text-yellow-500" /> Pending</>
-                  ) : (
-                    <><Clock size={14} className="text-gray-400" /> Unknown</>
-                  )}
-                </span>
+                <span className="text-gray-500">Payout ID</span>
+                <span className="font-mono text-xs">{loan.payout_id}</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            )}
+            {loan.provider_ref && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Provider Ref</span>
+                <span className="font-mono text-xs">{loan.provider_ref}</span>
+              </div>
+            )}
+            {loan.failure_reason && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Failure Reason</span>
+                <span className="text-red-600">{loan.failure_reason}</span>
+              </div>
+            )}
+            {loan.disbursed_at && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Disbursed At</span>
+                <span>{formatDate(loan.disbursed_at)}</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

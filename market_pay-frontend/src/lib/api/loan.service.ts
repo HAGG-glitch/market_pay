@@ -9,6 +9,9 @@ interface BackendLoan {
   state: string;
   source: string;
   monime_reference?: string;
+  payout_id?: string;
+  provider_ref?: string;
+  failure_reason?: string;
   created_at: string;
   disbursed_at?: string;
   reviewed_by?: string;
@@ -27,6 +30,9 @@ function mapLoan(loan: BackendLoan): Loan {
     status: loan.state as LoanStatus,
     source: loan.source,
     monime_reference: loan.monime_reference,
+    payout_id: loan.payout_id,
+    provider_ref: loan.provider_ref,
+    failure_reason: loan.failure_reason,
     created_at: loan.created_at,
     disbursed_at: loan.disbursed_at,
     reviewed_by: loan.reviewed_by,

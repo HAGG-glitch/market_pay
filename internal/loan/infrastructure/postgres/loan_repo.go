@@ -69,6 +69,15 @@ func (r *LoanRepo) UpdateSchedule(ctx context.Context, schedule *loanmodel.Repay
 	return r.db.WithContext(ctx).Save(schedule).Error
 }
 
+func (r *LoanRepo) FindByMonimeReference(ctx context.Context, ref string) *loanmodel.Loan {
+	var loan loanmodel.Loan
+	err := r.db.WithContext(ctx).Preload("Schedules").First(&loan, "monime_reference = ?", ref).Error
+	if err != nil {
+		return nil
+	}
+	return &loan
+}
+
 func (r *LoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error) {
 	var loans []*loanmodel.Loan
 	var count int64

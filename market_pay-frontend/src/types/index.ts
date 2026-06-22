@@ -40,6 +40,9 @@ export interface Loan {
   status: LoanStatus;
   source: string;
   monime_reference?: string;
+  payout_id?: string;
+  provider_ref?: string;
+  failure_reason?: string;
   created_at: string;
   disbursed_at?: string;
   reviewed_by?: string;
@@ -55,6 +58,7 @@ export enum LoanStatus {
   UNDER_REVIEW = "UNDER_REVIEW",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
+  DISBURSEMENT_PENDING = "DISBURSEMENT_PENDING",
   DISBURSED = "DISBURSED",
   ACTIVE = "ACTIVE",
   CLOSED = "CLOSED",

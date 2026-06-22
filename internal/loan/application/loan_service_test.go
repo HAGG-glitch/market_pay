@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	loanapp  "github.com/marketpay/backend/internal/loan/application"
@@ -51,6 +50,11 @@ func (m *mockLoanRepo) UpdateSchedule(ctx context.Context, s *loanmodel.Repaymen
 func (m *mockLoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error) {
 	args := m.Called(ctx, state, isDemo, offset, limit)
 	return args.Get(0).([]*loanmodel.Loan), args.Get(1).(int64), args.Error(2)
+}
+func (m *mockLoanRepo) FindByMonimeReference(ctx context.Context, ref string) *loanmodel.Loan {
+	args := m.Called(ctx, ref)
+	if args.Get(0) == nil { return nil }
+	return args.Get(0).(*loanmodel.Loan)
 }
 
 type mockAuditRepo struct{ mock.Mock }
@@ -246,7 +250,7 @@ func TestLoanService_Approve_Success(t *testing.T) {
 	assert.Equal(t, &officerID, loan.ReviewedBy)
 }
 
-func TestLoanService_Disburse_GeneratesSchedule(t *testing.T) {
+func TestLoanService_Disburse_SetsDisbursementPending(t *testing.T) {
 	repo     := &mockLoanRepo{}
 	audit    := &mockAuditRepo{}
 	events   := &mockEventPublisher{}
@@ -269,7 +273,6 @@ func TestLoanService_Disburse_GeneratesSchedule(t *testing.T) {
 
 	repo.On("FindByID", ctx, loanID).Return(existingLoan, nil)
 	repo.On("Update", ctx, mock.AnythingOfType("*model.Loan")).Return(nil)
-	repo.On("SaveSchedules", ctx, mock.AnythingOfType("[]model.RepaymentSchedule")).Return(nil)
 	audit.On("Log", ctx, mock.Anything).Return(nil)
 	events.On("Publish", ctx, "LoanDisbursed", loanID.String(), mock.Anything).Return(nil)
 
@@ -277,12 +280,7 @@ func TestLoanService_Disburse_GeneratesSchedule(t *testing.T) {
 
 	loan, err := svc.Disburse(ctx, loanID, "MONIME-REF-001")
 	require.NoError(t, err)
-	assert.Equal(t, loanmodel.LoanStateActive, loan.State)
+	assert.Equal(t, loanmodel.LoanStateDisbursementPending, loan.State)
 	assert.NotNil(t, loan.DisbursedAt)
 	assert.Equal(t, "MONIME-REF-001", loan.MonimeReference)
-
-	// SaveSchedules called once with 2 installments (4 weeks biweekly)
-	scheduleCall := repo.Calls[2] // Create, Update (disburse), SaveSchedules
-	_ = scheduleCall
-	_ = time.Now()
 }

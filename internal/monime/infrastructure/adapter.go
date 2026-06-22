@@ -97,6 +97,10 @@ func (m *MonimeAdapter) Collect(ctx context.Context, req monimemodel.CollectionR
 	return &result, nil
 }
 
+func (m *MonimeAdapter) GetWebhookSecret() string {
+	return m.cfg.WebhookSecret
+}
+
 func (m *MonimeAdapter) ValidateWebhook(payload []byte, signature string) bool {
 	mac := hmac.New(sha256.New, []byte(m.cfg.WebhookSecret))
 	mac.Write(payload)

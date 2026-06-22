@@ -24,6 +24,7 @@ type LoanRepository interface {
 	FindSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) ([]loanmodel.RepaymentSchedule, error)
 	UpdateSchedule(ctx context.Context, schedule *loanmodel.RepaymentSchedule) error
 	ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error)
+	FindByMonimeReference(ctx context.Context, ref string) *loanmodel.Loan
 }
 
 // AuditRepository persists audit log entries.
@@ -275,27 +276,17 @@ func (s *LoanService) Disburse(ctx context.Context, loanID uuid.UUID, monimeRef 
 	}
 
 	oldState := loan.State
-	if err := loan.Transition(loanmodel.LoanStateDisbursed); err != nil {
+	if err := loan.Transition(loanmodel.LoanStateDisbursementPending); err != nil {
 		return nil, err
 	}
 
 	now := time.Now()
-	dueDate := now.Add(time.Duration(loan.TermWeeks) * 7 * 24 * time.Hour)
 	loan.DisbursedAt = &now
-	loan.DueDate = &dueDate
 	loan.MonimeReference = monimeRef
 
 	if err := s.loans.Update(ctx, loan); err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
-
-	schedules := loan.GenerateSchedule()
-	if len(schedules) > 0 {
-		_ = s.loans.SaveSchedules(ctx, schedules)
-	}
-
-	_ = loan.Transition(loanmodel.LoanStateActive)
-	_ = s.loans.Update(ctx, loan)
 
 	_ = s.audit.Log(ctx, &shared.AuditLog{
 		Action:     "LOAN_DISBURSED",
@@ -333,6 +324,69 @@ func (s *LoanService) DisburseWithPayout(ctx context.Context, loanID uuid.UUID) 
 	}
 
 	return s.Disburse(ctx, loanID, monimeRef)
+}
+
+// ConfirmDisbursement transitions a DISBURSEMENT_PENDING loan to ACTIVE when payout completes.
+func (s *LoanService) ConfirmDisbursement(ctx context.Context, monimeRef string) error {
+	result := s.loans.FindByMonimeReference(ctx, monimeRef)
+	if result == nil {
+		return apperrors.ErrNotFound("loan with monime_reference " + monimeRef)
+	}
+
+	if err := result.Transition(loanmodel.LoanStateActive); err != nil {
+		return err
+	}
+
+	now := time.Now()
+	dueDate := now.Add(time.Duration(result.TermWeeks) * 7 * 24 * time.Hour)
+	result.DueDate = &dueDate
+
+	if err := s.loans.Update(ctx, result); err != nil {
+		return apperrors.ErrInternalServer(err)
+	}
+
+	schedules := result.GenerateSchedule()
+	if len(schedules) > 0 {
+		_ = s.loans.SaveSchedules(ctx, schedules)
+	}
+
+	_ = s.audit.Log(ctx, &shared.AuditLog{
+		Action:     "LOAN_CONFIRMED",
+		Resource:   "loan",
+		ResourceID: result.ID.String(),
+		OldState:   string(loanmodel.LoanStateDisbursementPending),
+		NewState:   string(loanmodel.LoanStateActive),
+	})
+
+	return nil
+}
+
+// FailDisbursement transitions a DISBURSEMENT_PENDING loan back to APPROVED when payout fails.
+func (s *LoanService) FailDisbursement(ctx context.Context, monimeRef string, failureReason string) error {
+	result := s.loans.FindByMonimeReference(ctx, monimeRef)
+	if result == nil {
+		return apperrors.ErrNotFound("loan with monime_reference " + monimeRef)
+	}
+
+	if err := result.Transition(loanmodel.LoanStateApproved); err != nil {
+		return err
+	}
+
+	result.MonimeReference = ""
+	if failureReason != "" {
+		result.RejectionReason = failureReason
+	}
+	_ = s.loans.Update(ctx, result)
+
+	_ = s.audit.Log(ctx, &shared.AuditLog{
+		Action:     "LOAN_DISBURSEMENT_FAILED",
+		Resource:   "loan",
+		ResourceID: result.ID.String(),
+		OldState:   string(loanmodel.LoanStateDisbursementPending),
+		NewState:   string(loanmodel.LoanStateApproved),
+	})
+
+	return nil
 }
 
 // GetByID retrieves a loan by ID.
