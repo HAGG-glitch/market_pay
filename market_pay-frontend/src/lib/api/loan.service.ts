@@ -46,15 +46,13 @@ export async function getLoans(params?: {
   limit?: number;
   status?: string;
 }) {
+  const queryParams: Record<string, string | number> = {};
+  if (params?.page) queryParams.page = params.page;
+  if (params?.limit) queryParams.limit = params.limit;
+  if (params?.status) queryParams.state = params.status;
   const { data } = await apiClient.get<PaginatedResponse<BackendLoan>>(
     "/loans",
-    {
-      params: {
-        page: params?.page,
-        limit: params?.limit,
-        state: params?.status,
-      },
-    }
+    { params: queryParams }
   );
   return {
     ...data,
