@@ -2,6 +2,29 @@
   "version": "1.0",
   "pages": [
     {
+      "id": "mp_pub_welcome",
+      "component": {
+        "type": "menu",
+        "label": "Welcome to MarketPay",
+        "items": [
+          { "label": "Pay a vendor", "value": "pay_vendor" },
+          { "label": "Register as vendor", "value": "register" },
+          { "label": "Exit", "value": "exit" }
+        ]
+      },
+      "on_done": {
+        "action": "next",
+        "session_context": {
+          "mutations": { "selected_service": "$(page.mp_pub_welcome.value)" }
+        }
+      }
+    },
+    {
+      "id": "mp_pub_exit",
+      "component": { "type": "display", "label": "Thanks for using MarketPay." },
+      "options": { "skip": "$(sc.selected_service != \"exit\")" }
+    },
+    {
       "id": "mp_pub_enter_vendor_code",
       "component": {
         "type": "prompt",
@@ -11,6 +34,7 @@
         "max_length": 12,
         "pattern": "^MP[0-9]{5,10}$"
       },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
       "on_done": {
         "action": "next",
         "session_context": { "mutations": { "payment_vendor_code": "$(page.mp_pub_enter_vendor_code.value)" } }
@@ -25,6 +49,7 @@
         "min_value": 1,
         "max_value": 10000000
       },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
       "on_done": {
         "action": "next",
         "session_context": { "mutations": { "payment_amount": "$(page.mp_pub_enter_amount.value)" } }
@@ -40,11 +65,12 @@
           { "label": "Cancel", "value": "cancel" }
         ]
       },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\")" },
       "on_done": {
         "action": "exchange",
         "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
         "dataExport": {
-          "selected_service": "pay_vendor",
+          "selected_service": "$(sc.selected_service)",
           "payment_vendor_code": "$(sc.payment_vendor_code)",
           "payment_amount": "$(sc.payment_amount)",
           "payment_confirmed": "$(page.mp_pub_confirm_payment.value != \"cancel\")"
@@ -67,12 +93,12 @@
           "payment_target_ref": "017460513"
         }
       },
-      "options": { "skip": "$(sc.payment_confirmed != true)" },
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\" || sc.payment_confirmed != true)" },
       "on_done": {
         "action": "exchange",
         "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
         "dataExport": {
-          "selected_service": "pay_vendor",
+          "selected_service": "$(sc.selected_service)",
           "payment_vendor_code": "$(sc.payment_vendor_code)",
           "payment_amount": "$(sc.payment_amount)"
         }
@@ -81,12 +107,87 @@
     {
       "id": "mp_pub_show_payment_result",
       "component": { "type": "display", "label": "$(data.message)" },
-      "options": { "skip": "$(sc.payment_confirmed != true)" }
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\" || sc.payment_confirmed != true)" }
     },
     {
       "id": "mp_pub_show_payment_cancelled",
       "component": { "type": "display", "label": "Payment cancelled." },
-      "options": { "skip": "$(sc.payment_confirmed == true)" }
+      "options": { "skip": "$(sc.selected_service != \"pay_vendor\" || sc.payment_confirmed == true)" }
+    },
+    {
+      "id": "mp_pub_reg_name",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter your full name"
+      },
+      "options": { "skip": "$(sc.selected_service != \"register\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "registration_vendor_name": "$(page.mp_pub_reg_name.value)" } }
+      }
+    },
+    {
+      "id": "mp_pub_reg_market",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter your market name"
+      },
+      "options": { "skip": "$(sc.selected_service != \"register\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "registration_market_name": "$(page.mp_pub_reg_market.value)" } }
+      }
+    },
+    {
+      "id": "mp_pub_reg_phone",
+      "component": {
+        "type": "prompt",
+        "data_type": "text",
+        "label": "Enter your phone number\n(e.g. 23276123456)"
+      },
+      "options": { "skip": "$(sc.selected_service != \"register\")" },
+      "on_done": {
+        "action": "next",
+        "session_context": { "mutations": { "registration_phone": "$(page.mp_pub_reg_phone.value)" } }
+      }
+    },
+    {
+      "id": "mp_pub_reg_confirm",
+      "component": {
+        "type": "menu",
+        "label": "Register $(sc.registration_vendor_name)\nat $(sc.registration_market_name)?",
+        "items": [
+          { "label": "Confirm", "value": "confirm" },
+          { "label": "Cancel", "value": "cancel" }
+        ]
+      },
+      "options": { "skip": "$(sc.selected_service != \"register\")" },
+      "on_done": {
+        "action": "exchange",
+        "url": "https://market-pay-fpsi.onrender.com/api/v1/monime/exchange",
+        "dataExport": {
+          "selected_service": "$(sc.selected_service)",
+          "registration_vendor_name": "$(sc.registration_vendor_name)",
+          "registration_market_name": "$(sc.registration_market_name)",
+          "registration_phone": "$(sc.registration_phone)",
+          "registration_confirmed": "$(page.mp_pub_reg_confirm.value != \"cancel\")"
+        },
+        "session_context": {
+          "mutations": { "registration_confirmed": "$(page.mp_pub_reg_confirm.value != \"cancel\")" }
+        }
+      }
+    },
+    {
+      "id": "mp_pub_show_reg_result",
+      "component": { "type": "display", "label": "$(data.message)" },
+      "options": { "skip": "$(sc.selected_service != \"register\" || sc.registration_confirmed != true)" }
+    },
+    {
+      "id": "mp_pub_show_reg_cancelled",
+      "component": { "type": "display", "label": "Registration cancelled." },
+      "options": { "skip": "$(sc.selected_service != \"register\" || sc.registration_confirmed == true)" }
     }
   ]
 }

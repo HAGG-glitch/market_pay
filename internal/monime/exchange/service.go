@@ -109,7 +109,7 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 	sc := sessionContext(p)
 
 	switch p.CurrentPage {
-	case "mp_collect_market_name":
+	case "mp_collect_market_name", "mp_pub_reg_confirm":
 		return s.registerVendor(ctx, p, sc)
 	case "mp_confirm_payment_receipt":
 		return s.validatePayment(ctx, sc)
@@ -146,22 +146,28 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 }
 
 func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
-	s.log.Info("vendor registration", zap.String("session", p.Global.SessionID), zap.String("name", stringValue(sc["registration_vendor_name"])), zap.String("market", stringValue(sc["registration_market_name"])))
 	name := stringValue(sc["registration_vendor_name"])
 	market := stringValue(sc["registration_market_name"])
+	confirmed := stringValue(sc["registration_confirmed"])
+	s.log.Info("vendor registration", zap.String("session", p.Global.SessionID), zap.String("name", name), zap.String("market", market), zap.String("confirmed", confirmed))
+
+	if confirmed == "false" {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_show_reg_cancelled",
+			PageData: map[string]interface{}{"message": "Registration cancelled."},
+		}, nil
+	}
 
 	if name == "" || market == "" {
 		return monimeexchange.StopResponse{Action: "stop", Message: "Registration failed. Name and market are required."}, nil
 	}
 
-	// subscriberMsisdn is masked (e.g. "233XX XXX 4567") — cannot extract real phone.
-	// Generate a placeholder from subscriberId so the subscriber can be linked to a vendor
-	// record. The vendor must set their real phone via the website later.
-	subHash := p.Global.SubscriberID
-	if len(subHash) > 16 {
-		subHash = subHash[:16]
+	// Collect phone from USSD text input, normalize to +232 format
+	rawPhone := stringValue(sc["registration_phone"])
+	phone := normalizePhone(rawPhone)
+	if len(phone) < 10 {
+		return monimeexchange.StopResponse{Action: "stop", Message: "Invalid phone number. Please try again."}, nil
 	}
-	placeholderPhone := "+0" + subHash
 
 	parts := strings.Fields(name)
 	first := parts[0]
@@ -171,18 +177,18 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 	}
 
 	userID := uuid.New()
-	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(placeholderPhone, "+"))
+	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
 	pinHash := "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"
 	s.db.Exec(`INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified, is_demo, display_name)
 		VALUES (?, ?, ?, ?, 'VENDOR', true, false, false, ?) ON CONFLICT DO NOTHING`,
-		userID, syntheticEmail, placeholderPhone, pinHash, name)
+		userID, syntheticEmail, phone, pinHash, name)
 
 	_, err := s.vendorSvc.RegisterFromUSSD(ctx, vendorapp.USSDRegisterInput{
 		FirstName:    first,
 		LastName:     last,
-		Phone:        placeholderPhone,
+		Phone:        phone,
 		MarketName:   market,
-		NationalID:   "USSD-" + strings.TrimPrefix(placeholderPhone, "+"),
+		NationalID:   "USSD-" + strings.TrimPrefix(phone, "+"),
 		BusinessType: "TRADER",
 		PIN:          "0000",
 		UserID:       userID,
@@ -204,15 +210,15 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 
 	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "VendorCreated",
 		"New vendor registered",
-		fmt.Sprintf("%s registered via USSD at %s (placeholder phone: %s)", name, market, placeholderPhone), false)
+		fmt.Sprintf("%s registered via USSD at %s (phone: %s)", name, market, phone), false)
 
 	return monimeexchange.NavigateResponse{
 		Action: "navigate",
-		PageID: "mp_show_vendor_registration_result",
+		PageID: "mp_pub_show_reg_result",
 		PageData: map[string]interface{}{
 			"vendor_name": name,
 			"market_name": market,
-			"message":     "Registration received. Please visit the MarketPay website to set your phone number and PIN.",
+			"message":     fmt.Sprintf("Registration complete for %s at %s.\nPhone: %s\nUse this phone + your PIN (0000) to login on the website.", name, market, phone),
 		},
 	}, nil
 }
@@ -723,6 +729,22 @@ func stringValue(v interface{}) string {
 	default:
 		return fmt.Sprintf("%v", t)
 	}
+}
+
+func normalizePhone(msisdn string) string {
+	digits := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, msisdn)
+	if strings.HasPrefix(digits, "232") {
+		return "+" + digits
+	}
+	if len(digits) == 9 {
+		return "+232" + digits
+	}
+	return "+" + digits
 }
 
 func (s *Service) isDuplicate(sessionID string, p *monimeexchange.ExchangePayload) bool {
