@@ -184,8 +184,6 @@ func (h *WebhookHandler) handlePayoutFailed(c *gin.Context, payoutID string, raw
 		h.db.Exec(`UPDATE loans SET state = 'APPROVED', failure_reason = ? WHERE monime_reference = ? AND state = 'DISBURSED'`, failureReason, payoutID)
 	}
 
-	// Log the failure event
-	h.db.Exec(`INSERT INTO loan_events (loan_id, event_type, payload) SELECT id, 'PAYOUT_FAILED', ? FROM loans WHERE monime_reference = ?`, failureReason, payoutID)
 }
 
 // Payment webhook handling (legacy — collection webhooks).
