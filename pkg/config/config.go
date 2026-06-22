@@ -84,12 +84,41 @@ type MonimeConfig struct {
 }
 
 type MonimePayoutConfig struct {
-	BaseURL            string        `mapstructure:"base_url"`
-	APIKey             string        `mapstructure:"api_key"`
-	SpaceID            string        `mapstructure:"space_id"`
-	FinancialAccountID string        `mapstructure:"financial_account_id"`
-	ProviderID         string        `mapstructure:"provider_id"`
-	Timeout            time.Duration `mapstructure:"timeout"`
+	BaseURL            string            `mapstructure:"base_url"`
+	APIKey             string            `mapstructure:"api_key"`
+	SpaceID            string            `mapstructure:"space_id"`
+	FinancialAccountID string            `mapstructure:"financial_account_id"`
+	ProviderID         string            `mapstructure:"provider_id"`
+	ProviderMap        map[string]string `mapstructure:"provider_map"`
+	Timeout            time.Duration     `mapstructure:"timeout"`
+}
+
+func (c MonimePayoutConfig) ProviderForPhone(phone string) string {
+	if c.ProviderMap != nil {
+		// Match longest prefix first (e.g., +23276 before +232)
+		for _, prefix := range sortedKeysByLength(c.ProviderMap) {
+			if len(phone) >= len(prefix) && phone[:len(prefix)] == prefix {
+				return c.ProviderMap[prefix]
+			}
+		}
+	}
+	return c.ProviderID
+}
+
+func sortedKeysByLength(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	// Sort descending by length so longest prefix matches first
+	for i := 0; i < len(keys); i++ {
+		for j := i + 1; j < len(keys); j++ {
+			if len(keys[j]) > len(keys[i]) {
+				keys[i], keys[j] = keys[j], keys[i]
+			}
+		}
+	}
+	return keys
 }
 
 type USSDConfig struct {

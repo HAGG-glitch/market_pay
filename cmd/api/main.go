@@ -476,9 +476,10 @@ type monimePayoutAdapter struct {
 }
 
 func (a *monimePayoutAdapter) Disburse(ctx context.Context, phone string, amount float64) (string, error) {
+	providerID := a.cfg.ProviderForPhone(phone)
 	req := monimepayout.PayoutRequest{
 		Amount:      monimepayout.SLEAmount(amount),
-		Destination: monimepayout.MomoDestination(phone, a.cfg.ProviderID),
+		Destination: monimepayout.MomoDestination(phone, providerID),
 		Source: &monimepayout.Source{
 			FinancialAccountID: a.cfg.FinancialAccountID,
 		},
