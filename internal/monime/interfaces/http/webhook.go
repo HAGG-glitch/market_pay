@@ -25,6 +25,7 @@ func NewWebhookHandler(db *gorm.DB, paymentSvc *paymentapp.PaymentService, adapt
 
 func (h *WebhookHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/monime/webhook", h.Handle)
+	rg.POST("/monime/webhooks/payout", h.Handle)
 }
 
 type monimeWebhookPayload struct {
