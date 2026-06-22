@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	vendormodel "github.com/marketpay/backend/internal/vendors/domain/model"
@@ -34,6 +35,9 @@ func (r *VendorRepo) FindByID(ctx context.Context, id uuid.UUID) (*vendormodel.V
 }
 
 func (r *VendorRepo) FindByPhone(ctx context.Context, phone string) (*vendormodel.Vendor, error) {
+	if !strings.HasPrefix(phone, "+") {
+		phone = "+" + phone
+	}
 	var vendor vendormodel.Vendor
 	err := r.db.WithContext(ctx).Where("phone = ?", phone).First(&vendor).Error
 	if err != nil {
