@@ -38,6 +38,13 @@ export interface Loan {
   amount: number;
   interest_rate: number;
   status: LoanStatus;
+  source: string;
+  monime_reference?: string;
+  created_at: string;
+  disbursed_at?: string;
+  reviewed_by?: string;
+  review_note?: string;
+  rejection_reason?: string;
   repayment_schedule: RepaymentSchedule[];
   funded_by: string | null;
 }

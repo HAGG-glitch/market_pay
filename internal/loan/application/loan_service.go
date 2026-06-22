@@ -107,7 +107,14 @@ type ApplyInput struct {
 	GroupID   *uuid.UUID
 	FundedBy  loanmodel.FundingSource
 	PartnerID *uuid.UUID
+	Source    loanmodel.LoanSource
 	IsDemo    bool
+}
+
+// WebApply sets source before calling Apply.
+func (s *LoanService) WebApply(ctx context.Context, input ApplyInput) (*loanmodel.Loan, error) {
+	input.Source = loanmodel.LoanSourceWeb
+	return s.Apply(ctx, input)
 }
 
 // Apply creates a loan application and triggers auto-approval if eligible.
@@ -132,6 +139,7 @@ func (s *LoanService) Apply(ctx context.Context, input ApplyInput) (*loanmodel.L
 	interestType, rate := s.productConfig(input.LoanType)
 
 	loan := &loanmodel.Loan{
+		Source:            input.Source,
 		VendorID:          input.VendorID,
 		GroupID:           input.GroupID,
 		LoanType:          input.LoanType,

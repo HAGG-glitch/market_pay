@@ -18,6 +18,14 @@ const (
 	LoanTypeGrowthLoan       LoanType = "GROWTH_LOAN"
 )
 
+// LoanSource identifies where the loan was originated.
+type LoanSource string
+
+const (
+	LoanSourceUSSD LoanSource = "USSD"
+	LoanSourceWeb  LoanSource = "WEB"
+)
+
 // LoanState represents the loan lifecycle.
 type LoanState string
 
@@ -76,6 +84,7 @@ var validTransitions = map[LoanState][]LoanState{
 // Loan is the aggregate root for the loan bounded context.
 type Loan struct {
 	shared.BaseModel
+	Source            LoanSource         `gorm:"type:varchar(20);not null;default:'WEB'" json:"source"`
 	VendorID          uuid.UUID          `gorm:"type:uuid;not null;index" json:"vendor_id"`
 	GroupID           *uuid.UUID         `gorm:"type:uuid;index" json:"group_id,omitempty"`
 	LoanType          LoanType           `gorm:"type:varchar(50);not null" json:"loan_type"`

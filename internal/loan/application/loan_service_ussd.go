@@ -27,6 +27,7 @@ func (s *LoanService) ApplyFromUSSD(ctx context.Context, input USSDApplyInput) (
 		TermWeeks: input.TermWeeks,
 		Frequency: input.Frequency,
 		FundedBy:  input.FundedBy,
+		Source:    loanmodel.LoanSourceUSSD,
 	})
 	if err != nil {
 		return nil, err

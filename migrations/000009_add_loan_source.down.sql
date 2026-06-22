@@ -1,0 +1,1 @@
+ALTER TABLE loans DROP COLUMN IF EXISTS source;

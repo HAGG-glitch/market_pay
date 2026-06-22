@@ -12,6 +12,7 @@ export function useLoans(params?: { page?: number; status?: string }) {
   return useQuery({
     queryKey: ["loans", params],
     queryFn: () => getLoans(params),
+    refetchInterval: 15_000,
   });
 }
 
@@ -20,6 +21,7 @@ export function useLoan(id: string) {
     queryKey: ["loan", id],
     queryFn: () => getLoan(id),
     enabled: !!id,
+    refetchInterval: 10_000,
   });
 }
 

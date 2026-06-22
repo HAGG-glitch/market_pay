@@ -12,7 +12,7 @@ import { disburseLoan } from "@/lib/api/loan.service";
 import { useAuthStore } from "@/store/auth.store";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
 import { UserRole } from "@/types";
 
 const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
@@ -29,6 +29,14 @@ const statusColors: Record<string, "success" | "warning" | "danger" | "info" | "
 
 const canReview: UserRole[] = [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
 const canDisburse: UserRole[] = [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
+
+const timelineStages = [
+  { key: "PENDING_REVIEW", label: "Requested", icon: Clock },
+  { key: "APPROVED", label: "Approved", icon: CheckCircle },
+  { key: "DISBURSED", label: "Disbursement", icon: RefreshCw },
+  { key: "ACTIVE", label: "Active", icon: CheckCircle },
+  { key: "CLOSED", label: "Completed", icon: CheckCircle },
+];
 
 export default function LoanDetailPage() {
   const params = useParams();
@@ -89,6 +97,15 @@ export default function LoanDetailPage() {
     );
   }
 
+  const currentIdx = timelineStages.findIndex((s) => s.key === loan.status);
+  const statusOrder = timelineStages.map((s) => s.key);
+  const isRejected = loan.status === "REJECTED";
+
+  const stageTimestamps: Record<string, string | undefined> = {
+    PENDING_REVIEW: loan.created_at,
+    DISBURSED: loan.disbursed_at,
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
@@ -134,25 +151,23 @@ export default function LoanDetailPage() {
           </CardHeader>
           <CardContent>
             <Badge variant={statusColors[loan.status] || "default"}>
-              {loan.status}
+              {loan.status.replace("_", " ")}
             </Badge>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Due</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Source</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {formatCurrency(
-                loan.repayment_schedule.reduce((s, r) => s + r.amount, 0)
-              )}
-            </p>
+            <Badge variant={loan.source === "USSD" ? "default" : "info"}>
+              {loan.source || "WEB"}
+            </Badge>
           </CardContent>
         </Card>
       </div>
 
-      {isReviewer && (loan.status === "PENDING_REVIEW" || loan.status === "UNDER_REVIEW") && (
+      {isReviewer && !isRejected && (loan.status === "PENDING_REVIEW" || loan.status === "UNDER_REVIEW") && (
         <Card>
           <CardHeader>
             <CardTitle>Actions</CardTitle>
@@ -189,37 +204,148 @@ export default function LoanDetailPage() {
         </Card>
       )}
 
+      {loan.monime_reference && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payout Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Monime Reference</span>
+                <span className="font-mono text-xs">{loan.monime_reference}</span>
+              </div>
+              {loan.disbursed_at && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Disbursed At</span>
+                  <span>{formatDate(loan.disbursed_at)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Status</span>
+                <span className="flex items-center gap-1">
+                  {loan.status === "ACTIVE" ? (
+                    <><CheckCircle size={14} className="text-green-500" /> Successful</>
+                  ) : loan.status === "DISBURSED" ? (
+                    <><RefreshCw size={14} className="text-yellow-500" /> Pending</>
+                  ) : (
+                    <><Clock size={14} className="text-gray-400" /> Unknown</>
+                  )}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Loan Status Progress</CardTitle>
+          <CardTitle>Loan Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
-            {["DRAFT", "PENDING_REVIEW", "APPROVED", "DISBURSED", "ACTIVE", "CLOSED"].map(
-              (s, i) => {
-                const statuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "DISBURSED", "ACTIVE", "CLOSED"];
-                const currentIdx = statuses.indexOf(loan.status);
-                const isComplete = i <= currentIdx;
-                const isCurrent = statuses[i] === loan.status;
-
-                return (
-                  <div key={s} className="flex items-center gap-2">
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                        isComplete
-                          ? "bg-primary text-white"
-                          : "bg-gray-100 text-gray-400"
-                      } ${isCurrent ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                    >
-                      {i + 1}
-                    </div>
-                    <span className="text-xs text-gray-500">{s.replace("_", " ")}</span>
-                    {i < 5 && <div className={`h-px w-6 ${isComplete ? "bg-primary" : "bg-gray-200"}`} />}
-                  </div>
-                );
-              }
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Loan ID</span>
+              <span className="font-mono text-xs">{loan.id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Vendor ID</span>
+              <span className="font-mono text-xs">{loan.vendor_id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Applied</span>
+              <span>{formatDate(loan.created_at)}</span>
+            </div>
+            {loan.funded_by && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Funded By</span>
+                <span>{loan.funded_by}</span>
+              </div>
+            )}
+            {loan.reviewed_by && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Reviewed By</span>
+                <span className="font-mono text-xs">{loan.reviewed_by}</span>
+              </div>
+            )}
+            {loan.review_note && (
+              <div className="flex justify-between md:col-span-2">
+                <span className="text-gray-500">Review Note</span>
+                <span className="text-gray-700">{loan.review_note}</span>
+              </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Loan Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isRejected ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center gap-2">
+                <XCircle size={20} className="text-red-500" />
+                <div>
+                  <p className="font-medium text-red-800">Loan Rejected</p>
+                  {loan.rejection_reason && (
+                    <p className="text-sm text-red-600">{loan.rejection_reason}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+                {timelineStages.map((stage, i) => {
+                  const stageIdx = statusOrder.indexOf(stage.key);
+                  const isComplete = currentIdx >= stageIdx;
+                  const isCurrent = currentIdx === stageIdx;
+                  const timestamp = stageTimestamps[stage.key];
+                  const Icon = stage.icon;
+
+                  return (
+                    <div key={stage.key} className="flex items-start gap-3">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                            isComplete
+                              ? "bg-primary text-white"
+                              : "bg-gray-100 text-gray-400"
+                          } ${isCurrent ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                        >
+                          <Icon size={14} />
+                        </div>
+                        {i < timelineStages.length - 1 && (
+                          <div
+                            className={`mt-1 h-6 w-0.5 ${
+                              isComplete && !isCurrent ? "bg-primary" : "bg-gray-200"
+                            }`}
+                          />
+                        )}
+                      </div>
+                      <div className="pt-1">
+                        <p
+                          className={`text-sm font-medium ${
+                            isComplete ? "text-gray-900" : "text-gray-400"
+                          }`}
+                        >
+                          {stage.label}
+                        </p>
+                        {timestamp && (
+                          <p className="text-xs text-gray-400">
+                            {formatDate(timestamp)}
+                          </p>
+                        )}
+                        {isCurrent && !timestamp && (
+                          <p className="text-xs text-gray-500">Current stage</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+          )}
         </CardContent>
       </Card>
 

@@ -112,7 +112,7 @@ func (h *Handler) Apply(c *gin.Context) {
 		}
 	}
 
-	loan, err := h.loanSvc.Apply(c.Request.Context(), input)
+	loan, err := h.loanSvc.WebApply(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
 		return

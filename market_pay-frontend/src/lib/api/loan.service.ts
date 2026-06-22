@@ -7,6 +7,13 @@ interface BackendLoan {
   principal_amount: number;
   interest_rate: number;
   state: string;
+  source: string;
+  monime_reference?: string;
+  created_at: string;
+  disbursed_at?: string;
+  reviewed_by?: string;
+  review_note?: string;
+  rejection_reason?: string;
   funded_by: string | null;
   schedules?: { due_date: string; total_due: number; is_paid: boolean }[];
 }
@@ -18,6 +25,13 @@ function mapLoan(loan: BackendLoan): Loan {
     amount: loan.principal_amount,
     interest_rate: loan.interest_rate,
     status: loan.state as LoanStatus,
+    source: loan.source,
+    monime_reference: loan.monime_reference,
+    created_at: loan.created_at,
+    disbursed_at: loan.disbursed_at,
+    reviewed_by: loan.reviewed_by,
+    review_note: loan.review_note,
+    rejection_reason: loan.rejection_reason,
     repayment_schedule: (loan.schedules || []).map((s) => ({
       due_date: s.due_date,
       amount: s.total_due,
