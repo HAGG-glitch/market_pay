@@ -46,6 +46,7 @@ export default function LoginPage() {
   const [loginMode, setLoginMode] = useState<"email" | "vendor">("email");
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
+  const [vendorError, setVendorError] = useState("");
 
   const quickLogin = (userEmail: string) => {
     setEmail(userEmail);
@@ -94,13 +95,18 @@ export default function LoginPage() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setVendorError("");
             if (loginMode === "vendor") {
               import("@/lib/api/auth.service").then(({ vendorLogin }) => {
-                vendorLogin(phone, pin).then((result) => {
-                  setAuth(result.user, result.token, result.refreshToken);
-                  sessionStorage.removeItem("marketpay_logout");
-                  router.push(`/dashboard/${roleToRoute(result.user.role)}`);
-                });
+                vendorLogin(phone, pin)
+                  .then((result) => {
+                    setAuth(result.user, result.token, result.refreshToken);
+                    sessionStorage.removeItem("marketpay_logout");
+                    router.push(`/dashboard/${roleToRoute(result.user.role)}`);
+                  })
+                  .catch((err: Error) => {
+                    setVendorError(err.message || "Vendor login failed. Check phone (+232...) and PIN.");
+                  });
               });
             } else {
               handleSubmit(e);
@@ -131,15 +137,15 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <Input
-                id="phone"
-                label="Phone"
-                type="tel"
-                placeholder="+232..."
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
+                <Input
+                  id="phone"
+                  label="Phone"
+                  type="tel"
+                  placeholder="+23233346989"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
               <Input
                 id="pin"
                 label="PIN"
@@ -153,10 +159,13 @@ export default function LoginPage() {
             </>
           )}
 
-          {login.isError && (
+          {loginMode === "email" && login.isError && (
             <p className="text-sm text-red-500">
               {login.error?.message || "Invalid credentials. Please try again."}
             </p>
+          )}
+          {loginMode === "vendor" && vendorError && (
+            <p className="text-sm text-red-500">{vendorError}</p>
           )}
 
           <Button
