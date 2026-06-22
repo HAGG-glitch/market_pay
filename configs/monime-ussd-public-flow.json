@@ -63,7 +63,8 @@
         "template_data": {
           "amount": "$(sc.payment_amount)",
           "currency": "SLE",
-          "description": "Vendor payment"
+          "description": "Vendor payment",
+          "payment_target_ref": "017460513"
         }
       },
       "options": { "skip": "$(sc.payment_confirmed != true)" },
