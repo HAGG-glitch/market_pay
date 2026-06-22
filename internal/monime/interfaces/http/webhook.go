@@ -54,14 +54,27 @@ func (h *WebhookHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	if payload.Status == "SUCCESS" && payload.Reference != "" {
-		var paymentID uuid.UUID
-		h.db.Raw(
-			`SELECT id FROM payments WHERE monime_reference = ? AND status != 'SUCCESS' LIMIT 1`,
-			payload.Reference,
-		).Scan(&paymentID)
-		if paymentID != uuid.Nil {
-			h.paymentSvc.Complete(c.Request.Context(), paymentID, payload.Reference)
+	if payload.Reference == "" {
+		c.JSON(http.StatusOK, gin.H{"received": true})
+		return
+	}
+
+	switch payload.Event {
+	case "DisbursementSucceeded", "payout.completed":
+		h.db.Exec(`UPDATE loans SET state = 'ACTIVE' WHERE monime_reference = ? AND state = 'DISBURSED'`, payload.Reference)
+	case "DisbursementFailed", "payout.failed":
+		h.db.Exec(`UPDATE loans SET state = 'DISBURSED' WHERE monime_reference = ? AND state = 'ACTIVE'`, payload.Reference)
+		h.db.Exec(`INSERT INTO loan_events (loan_id, event_type, payload) SELECT id, 'PAYOUT_FAILED', ? FROM loans WHERE monime_reference = ?`, string(body), payload.Reference)
+	default:
+		if payload.Status == "SUCCESS" {
+			var paymentID uuid.UUID
+			h.db.Raw(
+				`SELECT id FROM payments WHERE monime_reference = ? AND status != 'SUCCESS' LIMIT 1`,
+				payload.Reference,
+			).Scan(&paymentID)
+			if paymentID != uuid.Nil {
+				h.paymentSvc.Complete(c.Request.Context(), paymentID, payload.Reference)
+			}
 		}
 	}
 
