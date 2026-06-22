@@ -62,7 +62,7 @@ const (
 // validTransitions defines the state machine rules.
 var validTransitions = map[LoanState][]LoanState{
 	LoanStateDraft:         {LoanStatePendingReview},
-	LoanStatePendingReview: {LoanStateAutoApproved, LoanStateUnderReview, LoanStateRejected},
+	LoanStatePendingReview: {LoanStateAutoApproved, LoanStateUnderReview, LoanStateApproved, LoanStateRejected},
 	LoanStateAutoApproved:  {LoanStateDisbursed, LoanStateRejected},
 	LoanStateUnderReview:   {LoanStateApproved, LoanStateRejected},
 	LoanStateApproved:      {LoanStateDisbursed},
