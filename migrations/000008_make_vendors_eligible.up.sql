@@ -1,8 +1,8 @@
 -- 000008: Make all vendors under Joshua eligible for loans
 
 UPDATE vendors
-SET status = 'active',
-    kyc_status = 'verified',
+SET status = 'ACTIVE',
+    kyc_status = 'VERIFIED',
     first_transaction_at = NOW() - INTERVAL '60 days',
     credit_score = 80,
     updated_at = NOW()
