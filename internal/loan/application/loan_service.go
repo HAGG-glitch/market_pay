@@ -158,8 +158,6 @@ func (s *LoanService) Apply(ctx context.Context, input ApplyInput) (*loanmodel.L
 	if input.LoanType == loanmodel.LoanTypeEmergencyAdvance && canAutoApprove {
 		_ = loan.Transition(loanmodel.LoanStateAutoApproved)
 		s.log.Info("loan auto-approved", zap.String("loan_id", loan.ID.String()))
-	} else {
-		_ = loan.Transition(loanmodel.LoanStateUnderReview)
 	}
 
 	if err := s.loans.Update(ctx, loan); err != nil {
