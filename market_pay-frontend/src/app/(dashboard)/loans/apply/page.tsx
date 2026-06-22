@@ -86,11 +86,16 @@ export default function LoanApplyPage() {
                   id="amount"
                   label="Loan Amount (LE)"
                   type="number"
-                  placeholder="50000"
+                  placeholder="10"
+                  min={1}
+                  max={50}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
                 />
+                {amount && (Number(amount) < 1 || Number(amount) > 50) && (
+                  <p className="text-sm text-red-500">Amount must be between 1 and 50 SLE</p>
+                )}
                 <Select
                   id="loan-type"
                   label="Loan Type"
@@ -105,7 +110,7 @@ export default function LoanApplyPage() {
                   type="button"
                   className="w-full"
                   onClick={() => setStep(2)}
-                  disabled={!amount}
+                  disabled={!amount || Number(amount) < 1 || Number(amount) > 50}
                 >
                   Next
                 </Button>

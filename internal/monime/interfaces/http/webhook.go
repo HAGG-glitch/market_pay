@@ -64,7 +64,8 @@ func (h *WebhookHandler) Handle(c *gin.Context) {
 	case "DisbursementSucceeded", "payout.completed":
 		h.db.Exec(`UPDATE loans SET state = 'ACTIVE' WHERE monime_reference = ? AND state = 'DISBURSED'`, payload.Reference)
 	case "DisbursementFailed", "payout.failed":
-		h.db.Exec(`UPDATE loans SET state = 'DISBURSED' WHERE monime_reference = ? AND state = 'ACTIVE'`, payload.Reference)
+		h.db.Exec(`UPDATE loans SET state = 'APPROVED' WHERE monime_reference = ? AND state = 'ACTIVE'`, payload.Reference)
+		h.db.Exec(`UPDATE loans SET state = 'APPROVED' WHERE monime_reference = ? AND state = 'DISBURSED'`, payload.Reference)
 		h.db.Exec(`INSERT INTO loan_events (loan_id, event_type, payload) SELECT id, 'PAYOUT_FAILED', ? FROM loans WHERE monime_reference = ?`, string(body), payload.Reference)
 	default:
 		if payload.Status == "SUCCESS" {

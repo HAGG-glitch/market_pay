@@ -176,14 +176,14 @@ export default function LoanDetailPage() {
         </Card>
       )}
 
-      {isDisburser && loan.status === "APPROVED" && (
+      {isDisburser && (loan.status === "APPROVED" || loan.status === "DISBURSED") && (
         <Card>
           <CardHeader>
             <CardTitle>Disbursement</CardTitle>
           </CardHeader>
           <CardContent>
             <Button onClick={() => setDisburseModal(true)}>
-              Disburse Loan
+              {loan.status === "DISBURSED" ? "Retry Disburse" : "Disburse Loan"}
             </Button>
           </CardContent>
         </Card>
