@@ -8,6 +8,7 @@ import (
 	loanapp "github.com/marketpay/backend/internal/loan/application"
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
+	vendorapp "github.com/marketpay/backend/internal/vendors/application"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/democtx"
 	"github.com/marketpay/backend/pkg/middleware"
@@ -16,12 +17,13 @@ import (
 
 // Handler handles loan HTTP requests.
 type Handler struct {
-	loanSvc *loanapp.LoanService
+	loanSvc   *loanapp.LoanService
+	vendorSvc *vendorapp.VendorService
 }
 
 // NewHandler constructs a loan Handler.
-func NewHandler(loanSvc *loanapp.LoanService) *Handler {
-	return &Handler{loanSvc: loanSvc}
+func NewHandler(loanSvc *loanapp.LoanService, vendorSvc *vendorapp.VendorService) *Handler {
+	return &Handler{loanSvc: loanSvc, vendorSvc: vendorSvc}
 }
 
 // RegisterRoutes mounts loan routes.
@@ -78,11 +80,17 @@ func (h *Handler) Apply(c *gin.Context) {
 		return
 	}
 
-	vendorIDStr := middleware.GetUserID(c)
-	vendorID, _ := uuid.Parse(vendorIDStr)
+	userIDStr := middleware.GetUserID(c)
+	userID, _ := uuid.Parse(userIDStr)
+
+	vendor, err := h.vendorSvc.GetByUserID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": "vendor account not found"})
+		return
+	}
 
 	input := loanapp.ApplyInput{
-		VendorID:  vendorID,
+		VendorID:  vendor.ID,
 		LoanType:  req.LoanType,
 		Amount:    req.Amount,
 		TermWeeks: req.TermWeeks,

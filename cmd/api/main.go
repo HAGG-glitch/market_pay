@@ -202,7 +202,7 @@ func main() {
 		cfg:    cfg.Monime.Payout,
 	}
 	loanSvc     := loanapp.NewLoanService(loanRepo, auditRepo, outboxPub, scoreSvc, vendorSvc, vendorPhoneAdapter, payoutAdapter, cfg.Loans, cfg.CreditScore, log)
-	loanHandler := loanhttp.NewHandler(loanSvc)
+	loanHandler := loanhttp.NewHandler(loanSvc, vendorSvc)
 
 	// ── Repayment ─────────────────────────────────────────────────────────
 	repayRepo    := repaypg.NewRepaymentRepo(db)
