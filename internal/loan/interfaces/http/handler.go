@@ -38,6 +38,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 		loans.PUT("/:id/approve", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Approve)
 		loans.PUT("/:id/reject", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Reject)
 		loans.PUT("/:id/disburse", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Disburse)
+		loans.PUT("/:id/revert-disbursement", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.RevertDisbursement)
 		loans.GET("/vendor/:vendor_id", h.GetVendorLoans)
 	}
 }
@@ -276,6 +277,21 @@ func (h *Handler) ListByState(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, pagination.NewResponse(loans, total, params))
+}
+
+// RevertDisbursement manually reverts an ACTIVE loan back to APPROVED.
+func (h *Handler) RevertDisbursement(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid loan ID"})
+		return
+	}
+
+	if err := h.loanSvc.RevertDisbursement(c.Request.Context(), id); err != nil {
+		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "disbursement reverted"})
 }
 
 // GetVendorLoans godoc

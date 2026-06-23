@@ -111,3 +111,7 @@ export async function disburseLoan(id: string, monimeReference: string) {
   });
   return mapLoan(data);
 }
+
+export async function revertDisbursement(id: string) {
+  await apiClient.put(`/loans/${id}/revert-disbursement`);
+}

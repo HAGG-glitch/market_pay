@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { disburseLoan } from "@/lib/api/loan.service";
+import { disburseLoan, revertDisbursement } from "@/lib/api/loan.service";
 import { useAuthStore } from "@/store/auth.store";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -57,6 +57,18 @@ export default function LoansPage() {
 
   const isDisburser =
     role && [UserRole.LOAN_OFFICER, UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(role);
+
+  const handleRevert = async (loanId: string) => {
+    setActionMsg("");
+    try {
+      await revertDisbursement(loanId);
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      setActionMsg("Disbursement reverted to Approved");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed";
+      setActionMsg(msg);
+    }
+  };
 
   const handleRetryDisburse = async (loanId: string) => {
     setActionMsg("");
@@ -164,6 +176,7 @@ export default function LoansPage() {
                       i={i}
                       isDisburser={!!isDisburser}
                       onRetry={handleRetryDisburse}
+                      onRevert={handleRevert}
                     />
                   ))}
                 </tbody>
@@ -181,11 +194,13 @@ function Row({
   i,
   isDisburser,
   onRetry,
+  onRevert,
 }: {
   loan: NonNullable<ReturnType<typeof useLoans>["data"]>["data"][number];
   i: number;
   isDisburser: boolean;
   onRetry: (id: string) => void;
+  onRevert: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -278,6 +293,19 @@ function Row({
                 >
                   <RefreshCw size={14} />
                   Retry Disbursement
+                </button>
+              )}
+              {isDisburser && loan.status === "ACTIVE" && loan.monime_reference && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRevert(loan.id);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  <AlertCircle size={14} />
+                  Revert Disbursement
                 </button>
               )}
               <Link
