@@ -147,7 +147,7 @@ export default function LoansPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left text-gray-500">
-                    <th className="pb-3 pt-3 pl-4 font-medium">ID</th>
+                    <th className="pb-3 pt-3 pl-4 font-medium">Vendor</th>
                     <th className="pb-3 pt-3 font-medium">Amount</th>
                     <th className="pb-3 pt-3 font-medium">Interest</th>
                     <th className="pb-3 pt-3 font-medium">Status</th>
@@ -215,9 +215,9 @@ function Row({
         i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
       }`}
     >
-      <td className="py-3 pl-4 font-mono text-xs text-gray-900">
+      <td className="py-3 pl-4 text-sm text-gray-900">
         <Link href={`/loans/${loan.id}`} className="hover:text-primary">
-          {loan.id.slice(0, 8)}...
+          {loan.vendor_name || loan.vendor_id.slice(0, 8) + "..."}
         </Link>
       </td>
       <td className="py-3 font-medium">{formatCurrency(loan.amount)}</td>

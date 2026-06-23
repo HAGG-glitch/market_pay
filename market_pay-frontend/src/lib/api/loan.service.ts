@@ -4,6 +4,7 @@ import type { Loan, LoanStatus, PaginatedResponse } from "@/types";
 interface BackendLoan {
   id: string;
   vendor_id: string;
+  vendor_name?: string;
   principal_amount: number;
   interest_rate: number;
   state: string;
@@ -25,6 +26,7 @@ function mapLoan(loan: BackendLoan): Loan {
   return {
     id: loan.id,
     vendor_id: loan.vendor_id,
+    vendor_name: loan.vendor_name,
     amount: loan.principal_amount,
     interest_rate: loan.interest_rate,
     status: loan.state as LoanStatus,

@@ -25,8 +25,12 @@ func (r *LoanRepo) Create(ctx context.Context, loan *loanmodel.Loan) error {
 func (r *LoanRepo) FindByID(ctx context.Context, id uuid.UUID) (*loanmodel.Loan, error) {
 	var loan loanmodel.Loan
 	err := r.db.WithContext(ctx).
+		Model(&loanmodel.Loan{}).
+		Select("loans.*, COALESCE(CONCAT(vendors.first_name, ' ', vendors.last_name), '') as vendor_name").
+		Joins("LEFT JOIN vendors ON vendors.id = loans.vendor_id").
+		Where("loans.id = ?", id).
 		Preload("Schedules").
-		First(&loan, "id = ?", id).Error
+		First(&loan).Error
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +44,11 @@ func (r *LoanRepo) FindByVendorID(ctx context.Context, vendorID uuid.UUID, offse
 	r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("vendor_id = ?", vendorID).Count(&count)
 
 	err := r.db.WithContext(ctx).
-		Where("vendor_id = ?", vendorID).
-		Order("created_at DESC").
+		Model(&loanmodel.Loan{}).
+		Select("loans.*, COALESCE(CONCAT(vendors.first_name, ' ', vendors.last_name), '') as vendor_name").
+		Joins("LEFT JOIN vendors ON vendors.id = loans.vendor_id").
+		Where("loans.vendor_id = ?", vendorID).
+		Order("loans.created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&loans).Error
 
@@ -71,7 +78,13 @@ func (r *LoanRepo) UpdateSchedule(ctx context.Context, schedule *loanmodel.Repay
 
 func (r *LoanRepo) FindByMonimeReference(ctx context.Context, ref string) *loanmodel.Loan {
 	var loan loanmodel.Loan
-	err := r.db.WithContext(ctx).Preload("Schedules").First(&loan, "monime_reference = ?", ref).Error
+	err := r.db.WithContext(ctx).
+		Model(&loanmodel.Loan{}).
+		Select("loans.*, COALESCE(CONCAT(vendors.first_name, ' ', vendors.last_name), '') as vendor_name").
+		Joins("LEFT JOIN vendors ON vendors.id = loans.vendor_id").
+		Where("loans.monime_reference = ?", ref).
+		Preload("Schedules").
+		First(&loan).Error
 	if err != nil {
 		return nil
 	}
@@ -82,14 +95,22 @@ func (r *LoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, i
 	var loans []*loanmodel.Loan
 	var count int64
 
-	query := r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("is_demo = ?", isDemo)
+	countQuery := r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("is_demo = ?", isDemo)
 	if state != "" {
-		query = query.Where("state = ?", state)
+		countQuery = countQuery.Where("state = ?", state)
 	}
-	query.Count(&count)
+	countQuery.Count(&count)
 
+	query := r.db.WithContext(ctx).
+		Model(&loanmodel.Loan{}).
+		Select("loans.*, COALESCE(CONCAT(vendors.first_name, ' ', vendors.last_name), '') as vendor_name").
+		Joins("LEFT JOIN vendors ON vendors.id = loans.vendor_id").
+		Where("loans.is_demo = ?", isDemo)
+	if state != "" {
+		query = query.Where("loans.state = ?", state)
+	}
 	err := query.
-		Order("created_at DESC").
+		Order("loans.created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&loans).Error
 

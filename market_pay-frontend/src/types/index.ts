@@ -35,6 +35,7 @@ export interface Vendor {
 export interface Loan {
   id: string;
   vendor_id: string;
+  vendor_name?: string;
   amount: number;
   interest_rate: number;
   status: LoanStatus;
