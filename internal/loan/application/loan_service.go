@@ -23,6 +23,7 @@ type LoanRepository interface {
 	SaveSchedules(ctx context.Context, schedules []loanmodel.RepaymentSchedule) error
 	FindSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) ([]loanmodel.RepaymentSchedule, error)
 	UpdateSchedule(ctx context.Context, schedule *loanmodel.RepaymentSchedule) error
+	DeleteSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) error
 	ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error)
 	FindByMonimeReference(ctx context.Context, ref string) *loanmodel.Loan
 }
@@ -361,28 +362,41 @@ func (s *LoanService) ConfirmDisbursement(ctx context.Context, monimeRef string)
 	return nil
 }
 
-// FailDisbursement transitions a DISBURSEMENT_PENDING loan back to APPROVED when payout fails.
+// FailDisbursement reverts a loan to APPROVED when payout fails.
+// Handles both DISBURSEMENT_PENDING (before confirmation) and
+// ACTIVE (when payout.completed was a false positive).
 func (s *LoanService) FailDisbursement(ctx context.Context, monimeRef string, failureReason string) error {
 	result := s.loans.FindByMonimeReference(ctx, monimeRef)
 	if result == nil {
 		return apperrors.ErrNotFound("loan with monime_reference " + monimeRef)
 	}
 
+	oldState := result.State
+
 	if err := result.Transition(loanmodel.LoanStateApproved); err != nil {
 		return err
 	}
 
 	result.MonimeReference = ""
-	if failureReason != "" {
-		result.RejectionReason = failureReason
+	result.PayoutID = ""
+	result.ProviderRef = ""
+	result.FailureReason = failureReason
+	result.DueDate = nil
+
+	if err := s.loans.Update(ctx, result); err != nil {
+		return apperrors.ErrInternalServer(err)
 	}
-	_ = s.loans.Update(ctx, result)
+
+	// If the loan was ACTIVE, schedules were generated — delete them
+	if oldState == loanmodel.LoanStateActive {
+		_ = s.loans.DeleteSchedulesByLoanID(ctx, result.ID)
+	}
 
 	_ = s.audit.Log(ctx, &shared.AuditLog{
 		Action:     "LOAN_DISBURSEMENT_FAILED",
 		Resource:   "loan",
 		ResourceID: result.ID.String(),
-		OldState:   string(loanmodel.LoanStateDisbursementPending),
+		OldState:   string(oldState),
 		NewState:   string(loanmodel.LoanStateApproved),
 	})
 

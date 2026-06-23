@@ -91,6 +91,10 @@ func (r *LoanRepo) FindByMonimeReference(ctx context.Context, ref string) *loanm
 	return &loan
 }
 
+func (r *LoanRepo) DeleteSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("loan_id = ?", loanID).Delete(&loanmodel.RepaymentSchedule{}).Error
+}
+
 func (r *LoanRepo) ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error) {
 	var loans []*loanmodel.Loan
 	var count int64

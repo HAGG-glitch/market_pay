@@ -78,7 +78,7 @@ var validTransitions = map[LoanState][]LoanState{
 	LoanStateRejected:            {},
 	LoanStateDisbursementPending: {LoanStateActive, LoanStateApproved, LoanStateDisbursed},
 	LoanStateDisbursed:           {LoanStateActive, LoanStateApproved},
-	LoanStateActive:              {LoanStateClosed, LoanStateDefaulted, LoanStateApproved},
+	LoanStateActive:              {LoanStateClosed, LoanStateDefaulted, LoanStateApproved /* reversal */},
 	LoanStateClosed:              {},
 	LoanStateDefaulted:           {LoanStateClosed},
 }

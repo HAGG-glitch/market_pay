@@ -149,7 +149,7 @@ func (h *WebhookHandler) handlePayoutCompleted(c *gin.Context, payoutID string, 
 
 	if h.loanSvc != nil {
 		if err := h.loanSvc.ConfirmDisbursement(c.Request.Context(), payoutID); err != nil {
-			h.log.Error("confirm disbursement failed", zap.Error(err), zap.String("payout_id", payoutID))
+			h.log.Error("confirm disbursement failed (fallback to raw SQL)", zap.Error(err), zap.String("payout_id", payoutID))
 			h.db.Exec(`UPDATE loans SET state = 'ACTIVE', provider_ref = ? WHERE monime_reference = ? AND state = 'DISBURSEMENT_PENDING'`, providerRef, payoutID)
 			h.db.Exec(`UPDATE loans SET state = 'ACTIVE', provider_ref = ? WHERE monime_reference = ? AND state = 'DISBURSED'`, providerRef, payoutID)
 		} else if providerRef != "" {
@@ -178,13 +178,15 @@ func (h *WebhookHandler) handlePayoutFailed(c *gin.Context, payoutID string, raw
 
 	if h.loanSvc != nil {
 		if err := h.loanSvc.FailDisbursement(c.Request.Context(), payoutID, failureReason); err != nil {
-			h.log.Error("fail disbursement failed", zap.Error(err), zap.String("payout_id", payoutID))
-			h.db.Exec(`UPDATE loans SET state = 'APPROVED', monime_reference = NULL, failure_reason = ? WHERE monime_reference = ? AND state = 'DISBURSEMENT_PENDING'`, failureReason, payoutID)
+			h.log.Error("fail disbursement failed (fallback to raw SQL)", zap.Error(err), zap.String("payout_id", payoutID))
+			h.db.Exec(`UPDATE loans SET state = 'APPROVED', monime_reference = NULL, payout_id = NULL, provider_ref = NULL, due_date = NULL, failure_reason = ? WHERE monime_reference = ? AND state IN ('DISBURSEMENT_PENDING','ACTIVE')`, failureReason, payoutID)
 			h.db.Exec(`UPDATE loans SET state = 'APPROVED', failure_reason = ? WHERE monime_reference = ? AND state = 'DISBURSED'`, failureReason, payoutID)
+			h.db.Exec(`DELETE FROM repayment_schedules WHERE loan_id IN (SELECT id FROM loans WHERE monime_reference = ? AND state = 'APPROVED')`, payoutID)
 		}
 	} else {
-		h.db.Exec(`UPDATE loans SET state = 'APPROVED', monime_reference = NULL, failure_reason = ? WHERE monime_reference = ? AND state = 'DISBURSEMENT_PENDING'`, failureReason, payoutID)
+		h.db.Exec(`UPDATE loans SET state = 'APPROVED', monime_reference = NULL, payout_id = NULL, provider_ref = NULL, due_date = NULL, failure_reason = ? WHERE monime_reference = ? AND state IN ('DISBURSEMENT_PENDING','ACTIVE')`, failureReason, payoutID)
 		h.db.Exec(`UPDATE loans SET state = 'APPROVED', failure_reason = ? WHERE monime_reference = ? AND state = 'DISBURSED'`, failureReason, payoutID)
+		h.db.Exec(`DELETE FROM repayment_schedules WHERE loan_id IN (SELECT id FROM loans WHERE monime_reference = ? AND state = 'APPROVED')`, payoutID)
 	}
 
 }
