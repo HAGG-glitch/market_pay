@@ -141,23 +141,41 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => handleNav(item.href)}
-              aria-current={pathname === item.href ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                pathname === item.href
-                  ? "bg-primary/10 text-primary shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              )}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isGroups = item.label === "Groups" || item.label === "Group";
+            return (
+              <div key={item.href} className="relative">
+                <Link
+                  href={isGroups ? "#" : item.href}
+                  onClick={(e) => {
+                    if (isGroups) {
+                      e.preventDefault();
+                      alert("Group lending is coming soon!");
+                    } else {
+                      handleNav(item.href);
+                    }
+                  }}
+                  aria-current={pathname === item.href ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    isGroups
+                      ? "text-gray-400 cursor-not-allowed"
+                      : pathname === item.href
+                        ? "bg-primary/10 text-primary shadow-sm"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+                {isGroups && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                    Soon
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="border-t p-4">
