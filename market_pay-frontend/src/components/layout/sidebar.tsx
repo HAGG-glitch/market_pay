@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  ClipboardList,
 } from "lucide-react";
 import type { UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
     { label: "Dashboard", href: "/dashboard/super-admin", icon: <LayoutDashboard size={18} /> },
     { label: "Loans", href: "/loans", icon: <CreditCard size={18} /> },
+    { label: "Payment Plans", href: "/payment-plans", icon: <ClipboardList size={18} /> },
     { label: "Payments", href: "/payments", icon: <Wallet size={18} /> },
     { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
     { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
@@ -38,6 +40,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   ADMIN: [
     { label: "Dashboard", href: "/dashboard/admin", icon: <LayoutDashboard size={18} /> },
     { label: "Loans", href: "/loans", icon: <CreditCard size={18} /> },
+    { label: "Payment Plans", href: "/payment-plans", icon: <ClipboardList size={18} /> },
     { label: "Payments", href: "/payments", icon: <Wallet size={18} /> },
     { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
     { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
@@ -47,6 +50,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/loan-officer", icon: <LayoutDashboard size={18} /> },
     { label: "Loan Queue", href: "/loans", icon: <FileText size={18} /> },
     { label: "Applications", href: "/loans/apply", icon: <CreditCard size={18} /> },
+    { label: "Payment Plans", href: "/payment-plans", icon: <ClipboardList size={18} /> },
     { label: "Vendors", href: "/vendors", icon: <Users size={18} /> },
     { label: "Groups", href: "/group-lending", icon: <Users size={18} /> },
   ],

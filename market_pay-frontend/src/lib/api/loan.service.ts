@@ -115,3 +115,40 @@ export async function disburseLoan(id: string, monimeReference: string) {
 export async function revertDisbursement(id: string) {
   await apiClient.put(`/loans/${id}/revert-disbursement`);
 }
+
+export interface PaymentPlanSummary {
+  id: string;
+  vendor_id: string;
+  vendor_name?: string;
+  state: string;
+  principal_amount: number;
+  interest_rate: number;
+  total_amount: number;
+  total_paid: number;
+  remaining: number;
+  progress_percent: number;
+  next_due_date?: string;
+  schedule_count: number;
+  paid_count: number;
+  schedules?: Array<{
+    id: string;
+    installment_no: number;
+    due_date: string;
+    total_due: number;
+    amount_paid: number;
+    status: string;
+    paid_at?: string;
+  }>;
+  created_at: string;
+}
+
+export async function getPaymentPlans(params?: { page?: number; state?: string }) {
+  const queryParams: Record<string, string | number> = {};
+  if (params?.page) queryParams.page = params.page;
+  if (params?.state) queryParams.state = params.state;
+  const { data } = await apiClient.get<PaginatedResponse<PaymentPlanSummary>>(
+    "/loans/payment-plans",
+    { params: queryParams }
+  );
+  return data;
+}

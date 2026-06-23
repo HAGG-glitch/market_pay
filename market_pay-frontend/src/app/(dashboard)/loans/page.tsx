@@ -52,6 +52,7 @@ export default function LoansPage() {
     { label: "Approved", value: "APPROVED" },
     { label: "Pending Disburse", value: "DISBURSEMENT_PENDING" },
     { label: "Active", value: "ACTIVE" },
+    { label: "Closed", value: "CLOSED" },
     { label: "All", value: "" },
   ];
 
