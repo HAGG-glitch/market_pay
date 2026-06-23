@@ -525,7 +525,7 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 		fmt.Sscanf(amountStr, "%f", &amount)
 		loanIDs := s.activeLoanIDs(ctx, vendor.ID)
 		for _, loanID := range loanIDs {
-			_, _ = s.repaySvc.RecordRepayment(ctx, repayapp.RecordRepaymentInput{
+			rec, err := s.repaySvc.RecordRepayment(ctx, repayapp.RecordRepaymentInput{
 				LoanID:     loanID,
 				VendorID:   vendor.ID,
 				Amount:     amount,
@@ -539,7 +539,14 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 					"monime_event":  p.ExportedData,
 				},
 			})
-			_ = s.repaySvc.ConfirmRepayment(ctx, ref)
+			if err != nil {
+				s.log.Error("failed to record repayment", zap.Error(err), zap.String("ref", ref))
+				break
+			}
+			s.log.Info("repayment recorded", zap.String("id", rec.ID.String()), zap.String("ref", ref))
+			if err := s.repaySvc.ConfirmRepayment(ctx, ref); err != nil {
+				s.log.Error("failed to confirm repayment", zap.Error(err), zap.String("ref", ref))
+			}
 			break // one record per repayment
 		}
 	}
@@ -653,7 +660,7 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 		fmt.Sscanf(amountStr, "%f", &amount)
 		loanIDs := s.activeLoanIDs(ctx, vendor.ID)
 		for _, loanID := range loanIDs {
-			_, _ = s.repaySvc.RecordRepayment(ctx, repayapp.RecordRepaymentInput{
+			rec, err := s.repaySvc.RecordRepayment(ctx, repayapp.RecordRepaymentInput{
 				LoanID:     loanID,
 				VendorID:   vendor.ID,
 				Amount:     amount,
@@ -666,7 +673,14 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 					"masked_phone": p.Global.SubscriberMsisdn,
 				},
 			})
-			_ = s.repaySvc.ConfirmRepayment(ctx, ref)
+			if err != nil {
+				s.log.Error("failed to record public repayment", zap.Error(err), zap.String("ref", ref))
+				break
+			}
+			s.log.Info("public repayment recorded", zap.String("id", rec.ID.String()), zap.String("ref", ref))
+			if err := s.repaySvc.ConfirmRepayment(ctx, ref); err != nil {
+				s.log.Error("failed to confirm public repayment", zap.Error(err), zap.String("ref", ref))
+			}
 			break
 		}
 	}
