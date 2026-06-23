@@ -71,6 +71,18 @@ export default function LoansPage() {
     }
   };
 
+  const handleCancel = async (loanId: string) => {
+    setActionMsg("");
+    try {
+      await updateStatus.mutateAsync({ id: loanId, status: "REJECTED" });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      setActionMsg("Loan cancelled");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed";
+      setActionMsg(msg);
+    }
+  };
+
   const handleRetryDisburse = async (loanId: string) => {
     setActionMsg("");
     try {
@@ -178,6 +190,7 @@ export default function LoansPage() {
                       isDisburser={!!isDisburser}
                       onRetry={handleRetryDisburse}
                       onRevert={handleRevert}
+                      onCancel={handleCancel}
                     />
                   ))}
                 </tbody>
@@ -196,12 +209,14 @@ function Row({
   isDisburser,
   onRetry,
   onRevert,
+  onCancel,
 }: {
   loan: NonNullable<ReturnType<typeof useLoans>["data"]>["data"][number];
   i: number;
   isDisburser: boolean;
   onRetry: (id: string) => void;
   onRevert: (id: string) => void;
+  onCancel: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -294,6 +309,19 @@ function Row({
                 >
                   <RefreshCw size={14} />
                   Retry Disbursement
+                </button>
+              )}
+              {isDisburser && loan.status === "APPROVED" && loan.failure_reason && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCancel(loan.id);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  <AlertCircle size={14} />
+                  Cancel Loan
                 </button>
               )}
               {isDisburser && loan.status === "ACTIVE" && loan.monime_reference && (
