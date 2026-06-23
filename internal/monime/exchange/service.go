@@ -512,25 +512,15 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 	ref := fmt.Sprintf("REPAY-%s-%d", p.Global.SessionID, time.Now().Unix())
 	s.log.Info("repayment result", zap.String("session", p.Global.SessionID), zap.String("amount", amountStr), zap.String("ref", ref))
 
-	// Try to extract Monime collection reference from the template callback data
-	monimeRef := ""
-	for _, key := range []string{"external_ref", "transaction_reference", "reference", "receipt", "transactionId"} {
-		if v := stringValue(p.ExportedData[key]); v != "" {
-			monimeRef = v
-			break
-		}
-	}
-	if monimeRef == "" {
-		monimeRef = ref
-	}
-
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err == nil && vendor != nil {
 		s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "RepaymentReceived",
 			"USSD loan repayment",
 			fmt.Sprintf("Vendor %s repaid SLE %s. Ref: %s", vendor.FullName(), amountStr, ref), false)
 
-		// Record the repayment for webhook reconciliation
+		// Record and confirm the repayment immediately.
+		// The exchange callback confirms the subscriber was debited successfully,
+		// so we trust it rather than waiting for a webhook with no per-transaction ref.
 		amount := 0.0
 		fmt.Sscanf(amountStr, "%f", &amount)
 		loanIDs := s.activeLoanIDs(ctx, vendor.ID)
@@ -539,7 +529,7 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 				LoanID:     loanID,
 				VendorID:   vendor.ID,
 				Amount:     amount,
-				MonimeRef:  monimeRef,
+				MonimeRef:  ref,
 				PaymentRef: ref,
 				Metadata: map[string]interface{}{
 					"source":        "ussd_repayment",
@@ -549,6 +539,7 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 					"monime_event":  p.ExportedData,
 				},
 			})
+			_ = s.repaySvc.ConfirmRepayment(ctx, ref)
 			break // one record per repayment
 		}
 	}
@@ -651,22 +642,11 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 	ref := fmt.Sprintf("USSD-%s-%d", p.Global.SessionID, time.Now().Unix())
 	s.log.Info("public payment result", zap.String("session", p.Global.SessionID), zap.String("code", code), zap.String("amount", amountStr), zap.String("ref", ref))
 
-	monimeRef := ""
-	for _, key := range []string{"external_ref", "transaction_reference", "reference", "receipt", "transactionId"} {
-		if v := stringValue(p.ExportedData[key]); v != "" {
-			monimeRef = v
-			break
-		}
-	}
-	if monimeRef == "" {
-		monimeRef = ref
-	}
-
 	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "PaymentReceived",
 		"USSD public payment",
 		fmt.Sprintf("Customer paid SLE %s to %s. Ref: %s", amountStr, code, ref), false)
 
-	// Record a loan repayment if the vendor has active loans
+	// Record and confirm the repayment immediately
 	vendor, err := s.vendorSvc.GetByCode(ctx, code)
 	if err == nil && vendor != nil {
 		amount := 0.0
@@ -677,7 +657,7 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 				LoanID:     loanID,
 				VendorID:   vendor.ID,
 				Amount:     amount,
-				MonimeRef:  monimeRef,
+				MonimeRef:  ref,
 				PaymentRef: ref,
 				Metadata: map[string]interface{}{
 					"source":       "ussd_public_payment",
@@ -686,6 +666,7 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 					"masked_phone": p.Global.SubscriberMsisdn,
 				},
 			})
+			_ = s.repaySvc.ConfirmRepayment(ctx, ref)
 			break
 		}
 	}

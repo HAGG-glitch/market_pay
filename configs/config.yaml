@@ -55,6 +55,10 @@ monime:
         provider_id: "m18"
       - prefix: "+23234"
         provider_id: "m18"
+      - prefix: "+23272"
+        provider_id: "m17"
+      - prefix: "+23279"
+        provider_id: "m17"
     timeout: "30s"
 
 ussd:
