@@ -307,9 +307,15 @@ func (h *Handler) ManualRepayment(c *gin.Context) {
 		ref = fmt.Sprintf("MANUAL-%s-%d", id.String()[:8], time.Now().Unix())
 	}
 
+	loan, err := h.loanSvc.GetByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "loan not found"})
+		return
+	}
+
 	rec, err := h.repaySvc.RecordRepayment(c.Request.Context(), repayapp.RecordRepaymentInput{
 		LoanID:     id,
-		VendorID:   uuid.Nil,
+		VendorID:   loan.VendorID,
 		Amount:     req.Amount,
 		MonimeRef:  ref,
 		PaymentRef: ref,
