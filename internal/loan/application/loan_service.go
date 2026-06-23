@@ -338,6 +338,8 @@ func (s *LoanService) ConfirmDisbursement(ctx context.Context, monimeRef string)
 		return err
 	}
 
+	result.FailureReason = ""
+
 	now := time.Now()
 	dueDate := now.Add(time.Duration(result.TermWeeks) * 7 * 24 * time.Hour)
 	result.DueDate = &dueDate
