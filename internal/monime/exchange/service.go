@@ -580,7 +580,7 @@ func (s *Service) handleTransactionHistory(ctx context.Context, p *monimeexchang
 		CreatedAt time.Time
 	}
 	var loans []LoanRecord
-	s.db.Raw(`SELECT principal_amount, state, created_at FROM loans WHERE vendor_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 3`, vendor.ID).Scan(&loans)
+	s.db.Raw(`SELECT principal_amount AS principal, state, created_at FROM loans WHERE vendor_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 10`, vendor.ID).Scan(&loans)
 
 	if len(loans) == 0 {
 		return monimeexchange.NavigateResponse{
@@ -606,7 +606,7 @@ func (s *Service) handleTransactionHistory(ctx context.Context, p *monimeexchang
 		case "REJECTED":
 			friendlyState = "Rejected"
 		}
-		sb.WriteString(fmt.Sprintf("%d. SLE %.0f - %s\n", i+1, l.Principal, friendlyState))
+		sb.WriteString(fmt.Sprintf("%d. SLE %.2f - %s\n", i+1, l.Principal, friendlyState))
 	}
 
 	return monimeexchange.NavigateResponse{
