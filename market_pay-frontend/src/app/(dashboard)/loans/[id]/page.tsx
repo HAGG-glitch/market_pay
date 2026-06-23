@@ -197,10 +197,19 @@ export default function LoanDetailPage() {
           <CardHeader>
             <CardTitle>Disbursement</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex gap-3">
             <Button onClick={() => setDisburseModal(true)}>
               {loan.status === "DISBURSED" ? "Retry Disburse" : "Disburse Loan"}
             </Button>
+            {loan.status === "APPROVED" && loan.failure_reason && (
+              <Button
+                variant="danger"
+                onClick={() => handleAction("REJECTED")}
+                disabled={updateStatus.isPending}
+              >
+                {updateStatus.isPending ? "Cancelling..." : "Cancel Loan"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

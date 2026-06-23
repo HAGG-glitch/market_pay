@@ -231,12 +231,11 @@ function Row({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const canRetry =
-    isDisburser &&
-    ((loan.status === "APPROVED" && !loan.monime_reference) || loan.status === "DISBURSED");
+  const canDisburse = isDisburser && loan.status === "APPROVED" && !loan.monime_reference;
+  const canRetry = isDisburser && loan.status === "DISBURSED";
 
   const payoutPending = loan.status === "DISBURSEMENT_PENDING";
-  const payoutFailed = (loan.status === "APPROVED" && !loan.monime_reference) || (loan.status === "DISBURSED" && !loan.monime_reference);
+  const payoutFailed = loan.status === "DISBURSED" && !loan.monime_reference;
 
   const sourceBadgeColor = loan.source === "USSD" ? "default" : "info";
 
@@ -298,7 +297,7 @@ function Row({
           </button>
           {menuOpen && (
             <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg border bg-white py-1 shadow-lg">
-              {canRetry && (
+              {canDisburse && (
                 <button
                   type="button"
                   onClick={() => {
@@ -306,6 +305,19 @@ function Row({
                     setMenuOpen(false);
                   }}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <RefreshCw size={14} />
+                  Disburse Loan
+                </button>
+              )}
+              {canRetry && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRetry(loan.id);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-600 hover:bg-amber-50"
                 >
                   <RefreshCw size={14} />
                   Retry Disbursement

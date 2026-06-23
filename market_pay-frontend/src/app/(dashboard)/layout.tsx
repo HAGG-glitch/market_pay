@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { SessionTimer } from "@/components/session-timer";
 
 export default function DashboardLayout({
   children,
@@ -45,6 +46,7 @@ export default function DashboardLayout({
       <main className="min-h-screen w-full pt-16 md:ml-64 md:pt-0">
         <div className="border-b bg-white px-4 py-2 md:px-8">
           <div className="mx-auto flex max-w-7xl items-center justify-end gap-3">
+            <SessionTimer />
             <NotificationBell />
             <ModeToggle />
           </div>
