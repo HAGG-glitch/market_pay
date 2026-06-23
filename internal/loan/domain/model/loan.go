@@ -113,7 +113,7 @@ type Loan struct {
 	ProviderRef          string             `gorm:"type:varchar(255)" json:"provider_ref,omitempty"`
 	FailureReason        string             `gorm:"type:text" json:"failure_reason,omitempty"`
 	Schedules         []RepaymentSchedule `gorm:"foreignKey:LoanID" json:"schedules,omitempty"`
-	VendorName        string             `gorm:"-" json:"vendor_name,omitempty"`
+	VendorName        string             `gorm:"->;<-:false" json:"vendor_name,omitempty"`
 	Currency          string             `gorm:"type:varchar(10);not null;default:'SLE'" json:"currency"`
 	IsDemo            bool               `gorm:"default:false" json:"is_demo"`
 }
