@@ -37,6 +37,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 	{
 		loans.POST("", middleware.RequireRoles(shared.RoleVendor), h.Apply)
 		loans.GET("", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin, shared.RoleLoanOfficer), h.ListByState)
+		loans.GET("/payment-plans", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.PaymentPlans)
 		loans.GET("/:id", h.GetByID)
 		loans.GET("/:id/schedule", h.GetSchedule)
 		loans.PUT("/:id/approve", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Approve)
@@ -282,6 +283,26 @@ func (h *Handler) ListByState(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, pagination.NewResponse(loans, total, params))
+}
+
+// PaymentPlans godoc
+// @Summary List loans with payment plan summaries
+// @Tags loans
+// @Security BearerAuth
+// @Param state query string false "Filter by loan state"
+// @Success 200 {object} pagination.Response{data=[]loanapp.PaymentPlanSummary}
+// @Router /loans/payment-plans [get]
+func (h *Handler) PaymentPlans(c *gin.Context) {
+	stateStr := c.Query("state")
+	state := loanmodel.LoanState(stateStr)
+	params := pagination.FromQuery(c)
+
+	plans, total, err := h.loanSvc.ListPaymentPlans(c.Request.Context(), state, democtx.FromGin(c), params.Offset(), params.Limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, pagination.NewResponse(plans, total, params))
 }
 
 type manualRepaymentRequest struct {

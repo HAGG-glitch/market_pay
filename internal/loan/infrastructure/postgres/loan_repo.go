@@ -63,6 +63,33 @@ func (r *LoanRepo) SaveSchedules(ctx context.Context, schedules []loanmodel.Repa
 	return r.db.WithContext(ctx).CreateInBatches(schedules, 100).Error
 }
 
+func (r *LoanRepo) ListPaymentPlans(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error) {
+	var loans []*loanmodel.Loan
+	var count int64
+
+	countQuery := r.db.WithContext(ctx).Model(&loanmodel.Loan{}).Where("is_demo = ?", isDemo)
+	if state != "" {
+		countQuery = countQuery.Where("state = ?", state)
+	}
+	countQuery.Count(&count)
+
+	query := r.db.WithContext(ctx).
+		Model(&loanmodel.Loan{}).
+		Select("loans.*, COALESCE(CONCAT(vendors.first_name, ' ', vendors.last_name), '') as vendor_name").
+		Joins("LEFT JOIN vendors ON vendors.id = loans.vendor_id").
+		Where("loans.is_demo = ?", isDemo)
+	if state != "" {
+		query = query.Where("loans.state = ?", state)
+	}
+	err := query.
+		Preload("Schedules").
+		Order("loans.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&loans).Error
+
+	return loans, count, err
+}
+
 func (r *LoanRepo) FindSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) ([]loanmodel.RepaymentSchedule, error) {
 	var schedules []loanmodel.RepaymentSchedule
 	err := r.db.WithContext(ctx).

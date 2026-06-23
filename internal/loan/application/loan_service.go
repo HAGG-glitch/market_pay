@@ -25,6 +25,7 @@ type LoanRepository interface {
 	UpdateSchedule(ctx context.Context, schedule *loanmodel.RepaymentSchedule) error
 	DeleteSchedulesByLoanID(ctx context.Context, loanID uuid.UUID) error
 	ListByState(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error)
+	ListPaymentPlans(ctx context.Context, state loanmodel.LoanState, isDemo bool, offset, limit int) ([]*loanmodel.Loan, int64, error)
 	FindByMonimeReference(ctx context.Context, ref string) *loanmodel.Loan
 }
 
