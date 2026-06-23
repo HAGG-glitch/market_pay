@@ -295,37 +295,61 @@ func main() {
 	router.NoRoute(mw.NotFound())
 	router.NoMethod(mw.MethodNotAllowed())
 
-	// Root
+	// Root — status page with USSD cooldown timer and keep-alive tracker
+	startTime := time.Now()
 	router.GET("/", func(c *gin.Context) {
 		c.Header("Content-Type", "text/html; charset=utf-8")
+		startUnix := startTime.UnixMilli()
+		appName := cfg.App.Name
+		appVersion := cfg.App.Version
+		appEnv := cfg.App.Env
 		c.String(http.StatusOK, `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>` + cfg.App.Name + ` Status</title>
+<title>`+appName+` Status</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-  .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:40px;max-width:600px;width:100%;text-align:center}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:40px;max-width:620px;width:100%;text-align:center}
   .status-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;vertical-align:middle}
   .dot-green{background:#3fb950;box-shadow:0 0 8px #3fb95088}
   .dot-yellow{background:#d29922;box-shadow:0 0 8px #d2992288}
   .dot-red{background:#f85149;box-shadow:0 0 8px #f8514988}
-  h1{font-size:24px;font-weight:600;margin-bottom:8px}
+  h1{font-size:24px;font-weight:600;margin-bottom:4px}
   .subtitle{color:#8b949e;font-size:14px;margin-bottom:24px}
+  .ussd-section{background:#1c2333;border:1px solid #30363d;border-radius:8px;padding:24px;margin-bottom:20px}
+  .ussd-section h2{font-size:16px;font-weight:600;margin-bottom:12px;color:#e6edf3}
+  .timer{font-size:42px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:2px}
+  .timer-green{color:#3fb950}
+  .timer-amber{color:#d29922}
+  .ussd-ready-text{font-size:15px;color:#8b949e;margin-bottom:12px}
+  .ussd-code{display:inline-block;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px 24px;font-size:22px;font-weight:700;font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;color:#3fb950;letter-spacing:1px;margin-top:8px}
   .component{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid #30363d;border-radius:6px;margin-bottom:8px;text-align:left}
   .component-name{font-size:14px;font-weight:500}
   .component-status{font-size:13px}
-  .footer{margin-top:24px;font-size:12px;color:#484f58}
-  .uptime{margin-top:16px;font-size:13px;color:#8b949e}
+  .keepalive-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#1c2333;border:1px solid #30363d;border-radius:6px;margin-top:16px;font-size:13px;color:#8b949e}
+  .keepalive-row span.timer-sm{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;color:#e6edf3;font-weight:600}
+  .footer{margin-top:20px;font-size:12px;color:#484f58}
 </style>
 </head>
 <body>
 <div class="card">
   <div><span class="status-dot dot-green"></span></div>
-  <h1>` + cfg.App.Name + ` — All Systems Operational</h1>
-  <p class="subtitle">` + time.Now().UTC().Format("Jan 2, 2006 15:04 UTC") + `</p>
+  <h1>`+appName+`</h1>
+  <p class="subtitle" id="serverTime">`+time.Now().UTC().Format("Jan 2, 2006 15:04 UTC")+`</p>
+
+  <div class="ussd-section">
+    <h2>📱 USSD Gateway</h2>
+    <div id="ussdTimer" class="timer timer-amber">--:--</div>
+    <div id="ussdReady" style="display:none">
+      <p class="ussd-ready-text">USSD is ready! Dial now:</p>
+      <div class="ussd-code">*715*1913660#</div>
+    </div>
+  </div>
+
   <div class="component">
     <span class="component-name">API Server</span>
     <span class="component-status"><span class="status-dot dot-green"></span>Operational</span>
@@ -342,9 +366,60 @@ func main() {
     <span class="component-name">PostgreSQL</span>
     <span class="component-status"><span class="status-dot dot-green"></span>Operational</span>
   </div>
-  <div class="uptime">Uptime: 100% · Last checked: just now</div>
-  <div class="footer">` + cfg.App.Name + ` v` + cfg.App.Version + ` · ` + cfg.App.Env + `</div>
+
+  <div class="keepalive-row">
+    <span>Next keep-alive ping</span>
+    <span class="timer-sm" id="pingTimer">--:--</span>
+  </div>
+
+  <div class="footer">`+appName+` v`+appVersion+` · `+appEnv+`</div>
 </div>
+
+<script>
+  const START = `+fmt.Sprintf("%d", startUnix)+`;
+  const COOLDOWN_MS = 5 * 60 * 1000;
+  const PING_INTERVAL = 5 * 60 * 1000;
+
+  function pad(n){return n.toString().padStart(2,'0')}
+  function fmt(ms){
+    if(ms <= 0) return "0:00";
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return m + ":" + pad(s);
+  }
+
+  function tick(){
+    const now = Date.now();
+    const elapsed = Math.max(0, now - START);
+    const cooldown = Math.max(0, COOLDOWN_MS - elapsed);
+
+    // USSD timer
+    if(cooldown > 0){
+      document.getElementById('ussdTimer').textContent = fmt(cooldown);
+      document.getElementById('ussdTimer').className = 'timer timer-amber';
+      document.getElementById('ussdReady').style.display = 'none';
+      document.getElementById('ussdTimer').style.display = 'block';
+    } else {
+      document.getElementById('ussdTimer').style.display = 'none';
+      document.getElementById('ussdReady').style.display = 'block';
+    }
+
+    // Ping timer
+    const cycles = Math.floor(elapsed / PING_INTERVAL);
+    const nextPing = (cycles + 1) * PING_INTERVAL;
+    const pingRemaining = Math.max(0, nextPing - elapsed);
+    document.getElementById('pingTimer').textContent = fmt(pingRemaining);
+
+    // Server time
+    const d = new Date(now);
+    document.getElementById('serverTime').textContent =
+      d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' ' +
+      pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ' UTC';
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>
 </body>
 </html>`)
 	})
@@ -444,6 +519,17 @@ func main() {
 		}()
 	} else {
 		log.Warn("keep-alive disabled — public_url not set")
+	}
+
+	// ── USSD ready notification: log after 5-min cooldown ─────────────────
+	if cfg.App.PublicURL != "" {
+		go func() {
+			select {
+			case <-time.After(5 * time.Minute):
+				log.Info("USSD ready — you can start dialing *715*1913660# now")
+			case <-keepAliveCtx.Done():
+			}
+		}()
 	}
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────
