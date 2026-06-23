@@ -28,12 +28,13 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Name     string `mapstructure:"name"`
-	Version  string `mapstructure:"version"`
-	Env      string `mapstructure:"env"`
-	Port     int    `mapstructure:"port"`
-	GRPCPort int    `mapstructure:"grpc_port"`
-	Debug    bool   `mapstructure:"debug"`
+	Name      string `mapstructure:"name"`
+	Version   string `mapstructure:"version"`
+	Env       string `mapstructure:"env"`
+	Port      int    `mapstructure:"port"`
+	GRPCPort  int    `mapstructure:"grpc_port"`
+	PublicURL string `mapstructure:"public_url"`
+	Debug     bool   `mapstructure:"debug"`
 }
 
 type DatabaseConfig struct {

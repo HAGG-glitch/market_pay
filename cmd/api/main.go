@@ -370,6 +370,35 @@ func main() {
 		}
 	}()
 
+	// ── Keep-alive: prevent Render free-tier sleep ─────────────────────────
+	keepAliveCtx, keepAliveStop := context.WithCancel(context.Background())
+	defer keepAliveStop()
+	if cfg.App.PublicURL != "" {
+		go func() {
+			client := &http.Client{Timeout: 10 * time.Second}
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			log.Info("keep-alive started", zap.String("url", cfg.App.PublicURL))
+			for {
+				select {
+				case <-ticker.C:
+					resp, err := client.Get(cfg.App.PublicURL)
+					if err != nil {
+						log.Warn("keep-alive ping failed", zap.Error(err))
+						continue
+					}
+					resp.Body.Close()
+					log.Debug("keep-alive ping ok", zap.Int("status", resp.StatusCode))
+				case <-keepAliveCtx.Done():
+					log.Info("keep-alive stopped")
+					return
+				}
+			}
+		}()
+	} else {
+		log.Warn("keep-alive disabled — public_url not set")
+	}
+
 	// ── Graceful shutdown ─────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -383,6 +412,7 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error("HTTP shutdown error", zap.Error(err))
 	}
+	keepAliveStop()
 	log.Info("server stopped")
 }
 

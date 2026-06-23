@@ -5,6 +5,7 @@ app:
   port: 8080
   grpc_port: 9090
   debug: true
+  public_url: "https://market-pay-fpsi.onrender.com"
 
 database:
   host: "postgres"
