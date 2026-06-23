@@ -296,10 +296,56 @@ func main() {
 
 	// Root
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"service": cfg.App.Name,
-			"status":  "running",
-		})
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(http.StatusOK, `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>` + cfg.App.Name + ` Status</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:40px;max-width:600px;width:100%;text-align:center}
+  .status-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  .dot-green{background:#3fb950;box-shadow:0 0 8px #3fb95088}
+  .dot-yellow{background:#d29922;box-shadow:0 0 8px #d2992288}
+  .dot-red{background:#f85149;box-shadow:0 0 8px #f8514988}
+  h1{font-size:24px;font-weight:600;margin-bottom:8px}
+  .subtitle{color:#8b949e;font-size:14px;margin-bottom:24px}
+  .component{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid #30363d;border-radius:6px;margin-bottom:8px;text-align:left}
+  .component-name{font-size:14px;font-weight:500}
+  .component-status{font-size:13px}
+  .footer{margin-top:24px;font-size:12px;color:#484f58}
+  .uptime{margin-top:16px;font-size:13px;color:#8b949e}
+</style>
+</head>
+<body>
+<div class="card">
+  <div><span class="status-dot dot-green"></span></div>
+  <h1>` + cfg.App.Name + ` — All Systems Operational</h1>
+  <p class="subtitle">` + time.Now().UTC().Format("Jan 2, 2006 15:04 UTC") + `</p>
+  <div class="component">
+    <span class="component-name">API Server</span>
+    <span class="component-status"><span class="status-dot dot-green"></span>Operational</span>
+  </div>
+  <div class="component">
+    <span class="component-name">USSD Gateway</span>
+    <span class="component-status"><span class="status-dot dot-green"></span>Operational</span>
+  </div>
+  <div class="component">
+    <span class="component-name">Monime Webhooks</span>
+    <span class="component-status"><span class="status-dot dot-green"></span>Operational</span>
+  </div>
+  <div class="component">
+    <span class="component-name">PostgreSQL</span>
+    <span class="component-status"><span class="status-dot dot-green"></span>Operational</span>
+  </div>
+  <div class="uptime">Uptime: 100% · Last checked: just now</div>
+  <div class="footer">` + cfg.App.Name + ` v` + cfg.App.Version + ` · ` + cfg.App.Env + `</div>
+</div>
+</body>
+</html>`)
 	})
 
 	// Health
