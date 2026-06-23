@@ -196,13 +196,14 @@ func main() {
 		client: payoutClient,
 		cfg:    cfg.Monime.Payout,
 	}
-	loanSvc     := loanapp.NewLoanService(loanRepo, auditRepo, outboxPub, scoreSvc, vendorSvc, vendorPhoneAdapter, payoutAdapter, cfg.Loans, cfg.CreditScore, log)
-	loanHandler := loanhttp.NewHandler(loanSvc, vendorSvc)
+	loanSvc := loanapp.NewLoanService(loanRepo, auditRepo, outboxPub, scoreSvc, vendorSvc, vendorPhoneAdapter, payoutAdapter, cfg.Loans, cfg.CreditScore, log)
 
 	// ── Repayment ─────────────────────────────────────────────────────────
 	repayRepo    := repaypg.NewRepaymentRepo(db)
 	repaySvc     := repayapp.NewRepaymentService(repayRepo, auditRepo, outboxPub, cfg.Repayment, log)
 	repayHandler := repayhttp.NewHandler(repaySvc)
+
+	loanHandler := loanhttp.NewHandler(loanSvc, vendorSvc, repaySvc)
 
 	// ── Group (coming soon) ──────────────────────────────────────────────
 	// Temporarily disabled until the group pay feature is properly planned.

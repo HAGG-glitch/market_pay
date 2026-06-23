@@ -1,12 +1,15 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	loanapp "github.com/marketpay/backend/internal/loan/application"
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
+	repayapp "github.com/marketpay/backend/internal/repayment/application"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	vendorapp "github.com/marketpay/backend/internal/vendors/application"
 	apperrors "github.com/marketpay/backend/pkg/errors"
@@ -19,11 +22,12 @@ import (
 type Handler struct {
 	loanSvc   *loanapp.LoanService
 	vendorSvc *vendorapp.VendorService
+	repaySvc  *repayapp.RepaymentService
 }
 
 // NewHandler constructs a loan Handler.
-func NewHandler(loanSvc *loanapp.LoanService, vendorSvc *vendorapp.VendorService) *Handler {
-	return &Handler{loanSvc: loanSvc, vendorSvc: vendorSvc}
+func NewHandler(loanSvc *loanapp.LoanService, vendorSvc *vendorapp.VendorService, repaySvc *repayapp.RepaymentService) *Handler {
+	return &Handler{loanSvc: loanSvc, vendorSvc: vendorSvc, repaySvc: repaySvc}
 }
 
 // RegisterRoutes mounts loan routes.
@@ -39,6 +43,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 		loans.PUT("/:id/reject", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Reject)
 		loans.PUT("/:id/disburse", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.Disburse)
 		loans.PUT("/:id/revert-disbursement", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.RevertDisbursement)
+		loans.POST("/:id/manual-repayment", middleware.RequireRoles(shared.RoleLoanOfficer, shared.RoleAdmin, shared.RoleSuperAdmin), h.ManualRepayment)
 		loans.GET("/vendor/:vendor_id", h.GetVendorLoans)
 	}
 }
@@ -277,6 +282,52 @@ func (h *Handler) ListByState(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, pagination.NewResponse(loans, total, params))
+}
+
+type manualRepaymentRequest struct {
+	Amount     float64 `json:"amount" binding:"required,gt=0"`
+	PaymentRef string  `json:"payment_ref"`
+}
+
+func (h *Handler) ManualRepayment(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid loan ID"})
+		return
+	}
+
+	var req manualRepaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ref := req.PaymentRef
+	if ref == "" {
+		ref = fmt.Sprintf("MANUAL-%s-%d", id.String()[:8], time.Now().Unix())
+	}
+
+	rec, err := h.repaySvc.RecordRepayment(c.Request.Context(), repayapp.RecordRepaymentInput{
+		LoanID:     id,
+		VendorID:   uuid.Nil,
+		Amount:     req.Amount,
+		MonimeRef:  ref,
+		PaymentRef: ref,
+		Metadata: map[string]interface{}{
+			"source": "manual_admin",
+		},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.repaySvc.ConfirmRepayment(c.Request.Context(), ref); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "repayment recorded and confirmed", "ref": ref, "id": rec.ID})
 }
 
 // RevertDisbursement manually reverts an ACTIVE loan back to APPROVED.
