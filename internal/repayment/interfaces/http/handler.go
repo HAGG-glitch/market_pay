@@ -28,7 +28,7 @@ func NewHandler(svc *repayapp.RepaymentService) *Handler {
 // RegisterRoutes mounts repayment routes.
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 	r := rg.Group("/repayments")
-	r.Use(auth)
+	r.Use(auth, middleware.RequireActiveVendor())
 	{
 		r.POST("", middleware.RequireRoles(shared.RoleVendor, shared.RoleAdmin), h.Repay)
 		r.PUT("/loans/:id/default", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin), h.MarkDefault)

@@ -24,7 +24,7 @@ func NewHandler(svc *paymentapp.PaymentService) *Handler {
 
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 	p := rg.Group("/payments")
-	p.Use(auth)
+	p.Use(auth, middleware.RequireActiveVendor())
 	{
 		p.GET("", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin), h.List)
 		p.POST("", middleware.RequireRoles(shared.RoleCustomer, shared.RoleVendor), h.Initiate)

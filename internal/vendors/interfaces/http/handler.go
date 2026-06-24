@@ -70,7 +70,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 
 	vendors := rg.Group("/vendors")
 
-	vendors.Use(auth)
+	vendors.Use(auth, middleware.RequireActiveVendor())
 
 	{
 

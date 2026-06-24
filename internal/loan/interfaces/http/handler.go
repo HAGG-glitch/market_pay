@@ -33,7 +33,7 @@ func NewHandler(loanSvc *loanapp.LoanService, vendorSvc *vendorapp.VendorService
 // RegisterRoutes mounts loan routes.
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 	loans := rg.Group("/loans")
-	loans.Use(auth)
+	loans.Use(auth, middleware.RequireActiveVendor())
 	{
 		loans.POST("", middleware.RequireRoles(shared.RoleVendor), h.Apply)
 		loans.GET("", middleware.RequireRoles(shared.RoleAdmin, shared.RoleSuperAdmin, shared.RoleLoanOfficer), h.ListByState)
