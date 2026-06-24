@@ -57,6 +57,13 @@ type vendorLoginRequest struct {
 	PIN   string `json:"pin" binding:"required,len=4"`
 }
 
+type vendorLoginResponse struct {
+	authapp.TokenPair
+	VendorID     string `json:"vendor_id"`
+	VendorStatus string `json:"vendor_status"`
+	KYCStatus    string `json:"kyc_status"`
+}
+
 // refreshRequest is the refresh payload.
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
@@ -130,7 +137,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body vendorLoginRequest true "Vendor credentials"
-// @Success 200 {object} authapp.TokenPair
+// @Success 200 {object} vendorLoginResponse
 // @Router /auth/vendor-login [post]
 func (h *Handler) VendorLogin(c *gin.Context) {
 	var req vendorLoginRequest
@@ -145,13 +152,24 @@ func (h *Handler) VendorLogin(c *gin.Context) {
 		return
 	}
 
+	vendor, err := h.vendorSvc.GetByUserID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+
 	pair, err := h.authSvc.LoginUserByID(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, pair)
+	c.JSON(http.StatusOK, vendorLoginResponse{
+		TokenPair:    *pair,
+		VendorID:     vendor.ID.String(),
+		VendorStatus: string(vendor.Status),
+		KYCStatus:    string(vendor.KYCStatus),
+	})
 }
 
 // Refresh godoc
