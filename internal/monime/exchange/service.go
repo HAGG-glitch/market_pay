@@ -178,7 +178,7 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 
 	userID := uuid.New()
 	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
-	pinHash := "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"
+	pinHash := "$2a$10$WOx9GopNZF933jMGRn16/.1IyKAE3087DTJLUfhmJHOYArxQf/Rgq"
 	s.db.Exec(`INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified, is_demo, display_name)
 		VALUES (?, ?, ?, ?, 'VENDOR', false, false, false, ?) ON CONFLICT DO NOTHING`,
 		userID, syntheticEmail, phone, pinHash, name)
