@@ -5,6 +5,9 @@ interface TokenPair {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  vendor_id?: string;
+  vendor_status?: string;
+  kyc_status?: string;
 }
 
 interface MeResponse {
@@ -82,5 +85,7 @@ export async function vendorLogin(phone: string, pin: string) {
     user,
     token: tokens.access_token,
     refreshToken: tokens.refresh_token,
+    vendorStatus: tokens.vendor_status || "",
+    kycStatus: tokens.kyc_status || "",
   };
 }

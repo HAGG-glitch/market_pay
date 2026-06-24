@@ -102,7 +102,11 @@ export default function LoginPage() {
                   .then((result) => {
                     setAuth(result.user, result.token, result.refreshToken);
                     sessionStorage.removeItem("marketpay_logout");
-                    router.push(`/dashboard/${roleToRoute(result.user.role)}`);
+                    if (result.vendorStatus === "PENDING") {
+                      router.push("/waiting-room");
+                    } else {
+                      router.push(`/dashboard/${roleToRoute(result.user.role)}`);
+                    }
                   })
                   .catch((err: Error) => {
                     setVendorError(err.message || "Vendor login failed. Check phone (+232...) and PIN.");
