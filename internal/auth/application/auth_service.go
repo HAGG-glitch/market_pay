@@ -175,10 +175,15 @@ func (s *AuthService) ValidateAccessToken(tokenString string) (*authmodel.TokenC
 		return nil, apperrors.ErrUnauthorized("invalid user ID in token")
 	}
 
+	vendorStatus, _ := claims["vendor_status"].(string)
+	kycStatus, _ := claims["kyc_status"].(string)
+
 	return &authmodel.TokenClaims{
-		UserID: userID,
-		Email:  claims["email"].(string),
-		Role:   shared.Role(claims["role"].(string)),
+		UserID:       userID,
+		Email:        claims["email"].(string),
+		Role:         shared.Role(claims["role"].(string)),
+		VendorStatus: vendorStatus,
+		KYCStatus:    kycStatus,
 	}, nil
 }
 

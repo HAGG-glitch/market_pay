@@ -61,7 +61,9 @@ func (rt *RefreshToken) IsValid() bool {
 
 // TokenClaims holds JWT claim data.
 type TokenClaims struct {
-	UserID uuid.UUID   `json:"user_id"`
-	Email  string      `json:"email"`
-	Role   shared.Role `json:"role"`
+	UserID       uuid.UUID   `json:"user_id"`
+	Email        string      `json:"email"`
+	Role         shared.Role `json:"role"`
+	VendorStatus string      `json:"vendor_status,omitempty"`
+	KYCStatus    string      `json:"kyc_status,omitempty"`
 }

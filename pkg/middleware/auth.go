@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	ContextKeyUserID = "user_id"
-	ContextKeyRole   = "user_role"
-	ContextKeyClaims = "claims"
+	ContextKeyUserID       = "user_id"
+	ContextKeyRole         = "user_role"
+	ContextKeyClaims       = "claims"
+	ContextKeyVendorStatus = "vendor_status"
+	ContextKeyKYCStatus    = "kyc_status"
 )
 
 // AuthMiddleware validates JWT access tokens.
@@ -40,6 +42,8 @@ func AuthMiddleware(authSvc *authapp.AuthService) gin.HandlerFunc {
 		c.Set(ContextKeyUserID, claims.UserID.String())
 		c.Set(ContextKeyRole, string(claims.Role))
 		c.Set(ContextKeyClaims, claims)
+		c.Set(ContextKeyVendorStatus, claims.VendorStatus)
+		c.Set(ContextKeyKYCStatus, claims.KYCStatus)
 		c.Next()
 	}
 }
@@ -61,6 +65,24 @@ func RequireRoles(roles ...shared.Role) gin.HandlerFunc {
 		role := shared.Role(roleStr.(string))
 		if !allowed[role] {
 			respondError(c, apperrors.ErrForbidden("insufficient permissions"))
+			return
+		}
+		c.Next()
+	}
+}
+
+// RequireActiveVendor blocks pending vendors from accessing the route.
+// Vendors with status PENDING can only reach this point if explicitly allowed.
+func RequireActiveVendor() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role := GetRole(c)
+		if role != shared.RoleVendor {
+			c.Next()
+			return
+		}
+		vendorStatus, _ := c.Get(ContextKeyVendorStatus)
+		if vendorStatus == "PENDING" {
+			respondError(c, apperrors.ErrForbidden("account pending approval"))
 			return
 		}
 		c.Next()
