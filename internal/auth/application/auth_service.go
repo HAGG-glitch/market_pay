@@ -182,7 +182,7 @@ func (s *AuthService) ValidateAccessToken(tokenString string) (*authmodel.TokenC
 	}, nil
 }
 
-func (s *AuthService) issueTokenPair(ctx context.Context, user *authmodel.User) (*TokenPair, error) {
+func (s *AuthService) issueTokenPair(ctx context.Context, user *authmodel.User, extraClaims ...map[string]interface{}) (*TokenPair, error) {
 	now := time.Now()
 	accessExpiry := now.Add(s.cfg.AccessExpiry)
 
@@ -193,6 +193,11 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user *authmodel.User) 
 		"role":    string(user.Role),
 		"iat":     now.Unix(),
 		"exp":     accessExpiry.Unix(),
+	}
+	for _, extra := range extraClaims {
+		for k, v := range extra {
+			accessClaims[k] = v
+		}
 	}
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenStr, err := accessToken.SignedString([]byte(s.cfg.AccessSecret))

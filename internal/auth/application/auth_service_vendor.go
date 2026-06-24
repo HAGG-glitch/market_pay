@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
+	vendormodel "github.com/marketpay/backend/internal/vendors/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 )
 
@@ -21,4 +22,19 @@ func (s *AuthService) LoginUserByID(ctx context.Context, userID uuid.UUID) (*Tok
 		return nil, apperrors.ErrUnauthorized("account is suspended")
 	}
 	return s.issueTokenPair(ctx, user)
+}
+
+// LoginVendorByID issues tokens for a verified vendor, embedding vendor status in the JWT.
+func (s *AuthService) LoginVendorByID(ctx context.Context, userID uuid.UUID, vendor *vendormodel.Vendor) (*TokenPair, error) {
+	user, err := s.users.FindByID(ctx, userID)
+	if err != nil || user == nil {
+		return nil, apperrors.ErrUnauthorized("user not found")
+	}
+	if !user.IsActive && user.Role != shared.RoleVendor {
+		return nil, apperrors.ErrUnauthorized("account is suspended")
+	}
+	return s.issueTokenPair(ctx, user, map[string]interface{}{
+		"vendor_status": string(vendor.Status),
+		"kyc_status":    string(vendor.KYCStatus),
+	})
 }

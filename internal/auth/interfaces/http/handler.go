@@ -158,7 +158,7 @@ func (h *Handler) VendorLogin(c *gin.Context) {
 		return
 	}
 
-	pair, err := h.authSvc.LoginUserByID(c.Request.Context(), userID)
+	pair, err := h.authSvc.LoginVendorByID(c.Request.Context(), userID, vendor)
 	if err != nil {
 		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
 		return
