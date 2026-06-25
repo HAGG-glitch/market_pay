@@ -331,8 +331,14 @@ func main() {
   .component-name{font-size:14px;font-weight:500}
   .component-status{font-size:13px}
   .keepalive-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#1c2333;border:1px solid #30363d;border-radius:6px;margin-top:16px;font-size:13px;color:#8b949e}
-  .keepalive-row span.timer-sm{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;color:#e6edf3;font-weight:600}
-  .footer{margin-top:20px;font-size:12px;color:#484f58}
+   .codes-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+   .codes-table th{text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#8b949e;border-bottom:1px solid #30363d}
+   .codes-table td{padding:10px 12px;border-bottom:1px solid #21262d}
+   .codes-table tr:last-child td{border-bottom:none}
+   .codes-table .code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;color:#3fb950;font-weight:600;letter-spacing:0.5px}
+   .codes-table .purpose{color:#8b949e;font-size:12px}
+   .keepalive-row span.timer-sm{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;color:#e6edf3;font-weight:600}
+   .footer{margin-top:20px;font-size:12px;color:#484f58}
 </style>
 </head>
 <body>
@@ -341,14 +347,22 @@ func main() {
   <h1>`+appName+`</h1>
   <p class="subtitle" id="serverTime">`+time.Now().UTC().Format("Jan 2, 2006 15:04 UTC")+`</p>
 
-  <div class="ussd-section">
-    <h2>📱 USSD Gateway</h2>
-    <div id="ussdTimer" class="timer timer-amber">--:--</div>
-    <div id="ussdReady" style="display:none">
-      <p class="ussd-ready-text">USSD is ready! Dial now:</p>
-      <div class="ussd-code">*715*1913660#</div>
-    </div>
-  </div>
+   <div class="ussd-section">
+     <h2>📱 USSD Gateway</h2>
+     <div id="ussdTimer" class="timer timer-amber">--:--</div>
+     <div id="ussdReady" style="display:none">
+       <p class="ussd-ready-text">USSD is ready! Dial now:</p>
+       <table class="codes-table">
+         <thead>
+           <tr><th>Name</th><th>Short Code</th><th>Purpose</th></tr>
+         </thead>
+         <tbody>
+           <tr><td>Market Pay Public</td><td class="code">*715*4563143#</td><td class="purpose">Vendor Registration</td></tr>
+           <tr><td>Market Pay</td><td class="code">*715*965#</td><td class="purpose">Lending Services</td></tr>
+         </tbody>
+       </table>
+     </div>
+   </div>
 
   <div class="component">
     <span class="component-name">API Server</span>
