@@ -192,6 +192,15 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 			userID, syntheticEmail, phone, pinHash, name)
 	}
 
+	// Find the default loan officer to assign as field agent
+	var fieldAgentID *uuid.UUID
+	var loanOfficer struct{ Id string }
+	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
+		if parsed, parseErr := uuid.Parse(loanOfficer.Id); parseErr == nil {
+			fieldAgentID = &parsed
+		}
+	}
+
 	_, err := s.vendorSvc.RegisterFromUSSD(ctx, vendorapp.USSDRegisterInput{
 		FirstName:    first,
 		LastName:     last,
@@ -201,6 +210,7 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		BusinessType: "TRADER",
 		PIN:          "0000",
 		UserID:       userID,
+		FieldAgentID: fieldAgentID,
 		IsDemo:       false,
 	})
 	if err != nil {
