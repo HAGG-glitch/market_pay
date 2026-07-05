@@ -125,6 +125,7 @@ cors:
     - "https://admin.marketpay.sl"
     - "https://app.marketpay.sl"
     - "https://market-pay.vercel.app"
+    - "https://*.vercel.app"
   allowed_methods:
     - "GET"
     - "POST"

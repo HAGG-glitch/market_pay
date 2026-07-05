@@ -290,6 +290,7 @@ func main() {
 		AllowMethods:     cfg.CORS.AllowedMethods,
 		AllowHeaders:     cfg.CORS.AllowedHeaders,
 		AllowCredentials: true,
+		AllowWildcard:    true,
 		MaxAge:           12 * time.Hour,
 	}))
 	router.NoRoute(mw.NotFound())
