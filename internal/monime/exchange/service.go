@@ -179,9 +179,18 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 	userID := uuid.New()
 	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
 	pinHash := "$2a$10$WOx9GopNZF933jMGRn16/.1IyKAE3087DTJLUfhmJHOYArxQf/Rgq"
-	s.db.Exec(`INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified, is_demo, display_name)
-		VALUES (?, ?, ?, ?, 'VENDOR', false, false, false, ?) ON CONFLICT DO NOTHING`,
-		userID, syntheticEmail, phone, pinHash, name)
+
+	// Use existing user ID if the user was already created (re-registration or partial failure)
+	var existingUser struct{ Id string }
+	if err := s.db.Raw(`SELECT id::text FROM users WHERE phone = ?`, phone).Scan(&existingUser).Error; err == nil && existingUser.Id != "" {
+		if parsed, parseErr := uuid.Parse(existingUser.Id); parseErr == nil {
+			userID = parsed
+		}
+	} else {
+		s.db.Exec(`INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified, is_demo, display_name)
+			VALUES (?, ?, ?, ?, 'VENDOR', false, false, false, ?) ON CONFLICT DO NOTHING`,
+			userID, syntheticEmail, phone, pinHash, name)
+	}
 
 	_, err := s.vendorSvc.RegisterFromUSSD(ctx, vendorapp.USSDRegisterInput{
 		FirstName:    first,
@@ -206,6 +215,9 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		s.log.Warn("vendor lookup after registration", zap.Error(findErr))
 	} else {
 		s.upsertSubscriber(ctx, p.Global.SubscriberID, vendor.ID, p.Global.SubscriberMsisdn)
+		// Grant USSD access so the vendor can use the menu after registration
+		s.db.Exec(`INSERT INTO ussd_allowed_subscribers (subscriber_id_hash, is_active) VALUES (?, true) ON CONFLICT (subscriber_id_hash) DO UPDATE SET is_active = true, updated_at = NOW()`,
+			p.Global.SubscriberID)
 	}
 
 	s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "VendorCreated",
