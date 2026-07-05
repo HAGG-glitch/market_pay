@@ -159,14 +159,20 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 	}
 
 	if name == "" || market == "" {
-		return monimeexchange.StopResponse{Action: "stop", Message: "Registration failed. Name and market are required."}, nil
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_welcome",
+			PageData: map[string]interface{}{"message": "Registration failed. Name and market are required."},
+		}, nil
 	}
 
 	// Collect phone from USSD text input, normalize to +232 format
 	rawPhone := stringValue(sc["registration_phone"])
 	phone := normalizePhone(rawPhone)
 	if len(phone) < 10 {
-		return monimeexchange.StopResponse{Action: "stop", Message: "Invalid phone number. Please try again."}, nil
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_reg_phone",
+			PageData: map[string]interface{}{"message": "Invalid phone number. Please try again."},
+		}, nil
 	}
 
 	parts := strings.Fields(name)
@@ -215,7 +221,10 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "exists") {
-			return monimeexchange.StopResponse{Action: "stop", Message: "This phone number is already registered."}, nil
+			return monimeexchange.NavigateResponse{
+				Action: "navigate", PageID: "mp_pub_welcome",
+				PageData: map[string]interface{}{"message": "This phone number is already registered. Please contact your field agent."},
+			}, nil
 		}
 		return nil, err
 	}
@@ -381,7 +390,10 @@ func (s *Service) applyLoan(ctx context.Context, p *monimeexchange.ExchangePaylo
 
 	vendor, err := s.findVendorBySubscriber(ctx, p.Global.SubscriberID)
 	if err != nil || vendor == nil {
-		return monimeexchange.StopResponse{Action: "stop", Message: "Register as a vendor before applying for a loan."}, nil
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_welcome",
+			PageData: map[string]interface{}{"message": "Register as a vendor before applying for a loan."},
+		}, nil
 	}
 
 	loan, err := s.loanSvc.ApplyFromUSSD(ctx, loanapp.USSDApplyInput{
