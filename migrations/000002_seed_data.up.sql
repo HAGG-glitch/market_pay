@@ -21,8 +21,8 @@ INSERT INTO market_associations (id, name, location, district) VALUES
   (gen_random_uuid(), 'Makeni Market',              'Makeni',                           'Bombali')
 ON CONFLICT (name) DO NOTHING;
 
--- Seed super admin user (password: Admin@1234)
--- bcrypt hash of "Admin@1234"
+-- Seed super admin user (password: password)
+-- bcrypt hash of "password"
 INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified) VALUES
   (gen_random_uuid(),
    'superadmin@marketpay.sl',

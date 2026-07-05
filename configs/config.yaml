@@ -43,23 +43,6 @@ monime:
     space_id: "spc-placeholder"
     financial_account_id: "fa-placeholder"
     provider_id: "m18"
-    provider_mappings:
-      - prefix: "+23276"
-        provider_id: "m17"
-      - prefix: "+23277"
-        provider_id: "m17"
-      - prefix: "+23278"
-        provider_id: "m17"
-      - prefix: "+23230"
-        provider_id: "m18"
-      - prefix: "+23233"
-        provider_id: "m18"
-      - prefix: "+23234"
-        provider_id: "m18"
-      - prefix: "+23272"
-        provider_id: "m17"
-      - prefix: "+23279"
-        provider_id: "m17"
     timeout: "30s"
 
 ussd:
