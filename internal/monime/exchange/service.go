@@ -109,8 +109,10 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 	sc := sessionContext(p)
 
 	switch p.CurrentPage {
-	case "mp_collect_market_name", "mp_pub_reg_confirm":
-		return s.registerVendor(ctx, p, sc)
+	case "mp_collect_market_name":
+		return s.registerVendorMainFlow(ctx, p, sc)
+	case "mp_pub_reg_confirm":
+		return s.registerVendorPublicFlow(ctx, p, sc)
 	case "mp_confirm_payment_receipt":
 		return s.validatePayment(ctx, sc)
 	case "mp_collect_payment_pin":
@@ -145,33 +147,14 @@ func (s *Service) route(ctx context.Context, p *monimeexchange.ExchangePayload) 
 	}
 }
 
-func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
+func (s *Service) registerVendorMainFlow(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
 	name := stringValue(sc["registration_vendor_name"])
 	market := stringValue(sc["registration_market_name"])
-	confirmed := stringValue(sc["registration_confirmed"])
-	s.log.Info("vendor registration", zap.String("session", p.Global.SessionID), zap.String("name", name), zap.String("market", market), zap.String("confirmed", confirmed))
-
-	if confirmed == "false" {
-		return monimeexchange.NavigateResponse{
-			Action: "navigate", PageID: "mp_pub_show_reg_cancelled",
-			PageData: map[string]interface{}{"message": "Registration cancelled."},
-		}, nil
-	}
+	s.log.Info("vendor registration (main flow)", zap.String("session", p.Global.SessionID), zap.String("name", name), zap.String("market", market))
 
 	if name == "" || market == "" {
-		return monimeexchange.NavigateResponse{
-			Action: "navigate", PageID: "mp_pub_welcome",
-			PageData: map[string]interface{}{"message": "Registration failed. Name and market are required."},
-		}, nil
-	}
-
-	// Collect phone from USSD text input, normalize to +232 format
-	rawPhone := stringValue(sc["registration_phone"])
-	phone := normalizePhone(rawPhone)
-	if len(phone) < 10 {
-		return monimeexchange.NavigateResponse{
-			Action: "navigate", PageID: "mp_pub_reg_phone",
-			PageData: map[string]interface{}{"message": "Invalid phone number. Please try again."},
+		return monimeexchange.StopResponse{
+			Action: "stop", Message: "Registration failed. Name and market are required.",
 		}, nil
 	}
 
@@ -182,11 +165,14 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		last = strings.Join(parts[1:], " ")
 	}
 
+	phone := normalizePhone(p.Global.SubscriberMsisdn)
+	if len(phone) < 10 {
+		phone = "ussd-" + p.Global.SubscriberID
+	}
 	userID := uuid.New()
 	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
 	pinHash := "$2a$10$WOx9GopNZF933jMGRn16/.1IyKAE3087DTJLUfhmJHOYArxQf/Rgq"
 
-	// Use existing user ID if the user was already created (re-registration or partial failure)
 	var existingUser struct{ Id string }
 	if err := s.db.Raw(`SELECT id::text FROM users WHERE phone = ?`, phone).Scan(&existingUser).Error; err == nil && existingUser.Id != "" {
 		if parsed, parseErr := uuid.Parse(existingUser.Id); parseErr == nil {
@@ -198,7 +184,6 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 			userID, syntheticEmail, phone, pinHash, name)
 	}
 
-	// Find the default loan officer to assign as field agent
 	var fieldAgentID *uuid.UUID
 	var loanOfficer struct{ Id string }
 	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
@@ -220,12 +205,6 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		IsDemo:       false,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "exists") {
-			return monimeexchange.NavigateResponse{
-				Action: "navigate", PageID: "mp_pub_welcome",
-				PageData: map[string]interface{}{"message": "This phone number is already registered. Please contact your field agent."},
-			}, nil
-		}
 		return nil, err
 	}
 
@@ -234,7 +213,6 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 		s.log.Warn("vendor lookup after registration", zap.Error(findErr))
 	} else {
 		s.upsertSubscriber(ctx, p.Global.SubscriberID, vendor.ID, p.Global.SubscriberMsisdn)
-		// Grant USSD access so the vendor can use the menu after registration
 		s.db.Exec(`INSERT INTO ussd_allowed_subscribers (subscriber_id_hash, is_active) VALUES (?, true) ON CONFLICT (subscriber_id_hash) DO UPDATE SET is_active = true, updated_at = NOW()`,
 			p.Global.SubscriberID)
 	}
@@ -245,13 +223,116 @@ func (s *Service) registerVendor(ctx context.Context, p *monimeexchange.Exchange
 
 	return monimeexchange.NavigateResponse{
 		Action: "navigate",
-		PageID: "mp_pub_show_reg_result",
+		PageID: "mp_show_vendor_registration_result",
 		PageData: map[string]interface{}{
-			"vendor_name": name,
-			"market_name": market,
-			"message":     fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
+			"message": fmt.Sprintf("Registration submitted for %s at %s.", name, market),
 		},
 	}, nil
+}
+
+func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchange.ExchangePayload, sc map[string]interface{}) (interface{}, error) {
+	name := stringValue(sc["registration_vendor_name"])
+	market := stringValue(sc["registration_market_name"])
+	confirmed := stringValue(sc["registration_confirmed"])
+	s.log.Info("vendor registration (public flow)", zap.String("session", p.Global.SessionID), zap.String("name", name), zap.String("market", market), zap.String("confirmed", confirmed))
+
+	if confirmed == "false" {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_show_reg_cancelled",
+			PageData: map[string]interface{}{"message": "Registration cancelled."},
+		}, nil
+	}
+
+	if name == "" || market == "" {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_welcome",
+			PageData: map[string]interface{}{"message": "Registration failed. Name and market are required."},
+		}, nil
+	}
+
+	rawPhone := stringValue(sc["registration_phone"])
+	phone := normalizePhone(rawPhone)
+	if len(phone) < 10 {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_reg_phone",
+			PageData: map[string]interface{}{"message": "Invalid phone number. Please try again."},
+		}, nil
+	}
+
+	parts := strings.Fields(name)
+	first := parts[0]
+	last := "Vendor"
+	if len(parts) > 1 {
+		last = strings.Join(parts[1:], " ")
+	}
+
+	userID := uuid.New()
+	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
+	pinHash := "$2a$10$WOx9GopNZF933jMGRn16/.1IyKAE3087DTJLUfhmJHOYArxQf/Rgq"
+
+	var existingUser struct{ Id string }
+	if err := s.db.Raw(`SELECT id::text FROM users WHERE phone = ?`, phone).Scan(&existingUser).Error; err == nil && existingUser.Id != "" {
+		if parsed, parseErr := uuid.Parse(existingUser.Id); parseErr == nil {
+			userID = parsed
+		}
+	} else {
+		s.db.Exec(`INSERT INTO users (id, email, phone, password_hash, role, is_active, is_verified, is_demo, display_name)
+			VALUES (?, ?, ?, ?, 'VENDOR', false, false, false, ?) ON CONFLICT DO NOTHING`,
+			userID, syntheticEmail, phone, pinHash, name)
+	}
+
+	var fieldAgentID *uuid.UUID
+	var loanOfficer struct{ Id string }
+	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
+		if parsed, parseErr := uuid.Parse(loanOfficer.Id); parseErr == nil {
+			fieldAgentID = &parsed
+		}
+	}
+
+	_, err := s.vendorSvc.RegisterFromUSSD(ctx, vendorapp.USSDRegisterInput{
+		FirstName:    first,
+		LastName:     last,
+		Phone:        phone,
+		MarketName:   market,
+		NationalID:   "USSD-" + strings.TrimPrefix(phone, "+"),
+		BusinessType: "TRADER",
+		PIN:          "0000",
+		UserID:       userID,
+		FieldAgentID: fieldAgentID,
+		IsDemo:       false,
+	})
+	if err == nil {
+		vendor, findErr := s.vendorSvc.GetByUserID(ctx, userID)
+		if findErr != nil {
+			s.log.Warn("vendor lookup after registration", zap.Error(findErr))
+		} else {
+			s.upsertSubscriber(ctx, p.Global.SubscriberID, vendor.ID, p.Global.SubscriberMsisdn)
+			s.db.Exec(`INSERT INTO ussd_allowed_subscribers (subscriber_id_hash, is_active) VALUES (?, true) ON CONFLICT (subscriber_id_hash) DO UPDATE SET is_active = true, updated_at = NOW()`,
+				p.Global.SubscriberID)
+		}
+
+		s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "VendorCreated",
+			"New vendor registered",
+			fmt.Sprintf("%s registered via USSD at %s (phone: %s)", name, market, phone), false)
+
+		return monimeexchange.NavigateResponse{
+			Action: "navigate",
+			PageID: "mp_pub_show_reg_result",
+			PageData: map[string]interface{}{
+				"vendor_name": name,
+				"market_name": market,
+				"message":     fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
+			},
+		}, nil
+	}
+
+	if strings.Contains(err.Error(), "registered") || strings.Contains(err.Error(), "exists") {
+		return monimeexchange.NavigateResponse{
+			Action: "navigate", PageID: "mp_pub_welcome",
+			PageData: map[string]interface{}{"message": "This phone number is already registered. Please contact your field agent."},
+		}, nil
+	}
+	return nil, err
 }
 
 func (s *Service) validatePayment(ctx context.Context, sc map[string]interface{}) (interface{}, error) {
