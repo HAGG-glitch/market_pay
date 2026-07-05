@@ -186,7 +186,7 @@ func (s *Service) registerVendorMainFlow(ctx context.Context, p *monimeexchange.
 
 	var fieldAgentID *uuid.UUID
 	var loanOfficer struct{ Id string }
-	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
+	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true AND is_demo = false ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
 		if parsed, parseErr := uuid.Parse(loanOfficer.Id); parseErr == nil {
 			fieldAgentID = &parsed
 		}
@@ -283,7 +283,7 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 
 	var fieldAgentID *uuid.UUID
 	var loanOfficer struct{ Id string }
-	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
+	if err := s.db.Raw(`SELECT id::text FROM users WHERE role = 'LOAN_OFFICER' AND is_active = true AND is_demo = false ORDER BY created_at ASC LIMIT 1`).Scan(&loanOfficer).Error; err == nil && loanOfficer.Id != "" {
 		if parsed, parseErr := uuid.Parse(loanOfficer.Id); parseErr == nil {
 			fieldAgentID = &parsed
 		}
