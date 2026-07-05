@@ -85,29 +85,18 @@ type MonimeConfig struct {
 	Payout           MonimePayoutConfig  `mapstructure:"payout"`
 }
 
-type ProviderMapping struct {
-	Prefix     string `mapstructure:"prefix"`
-	ProviderID string `mapstructure:"provider_id"`
-}
-
 type MonimePayoutConfig struct {
-	BaseURL            string            `mapstructure:"base_url"`
-	APIKey             string            `mapstructure:"api_key"`
-	SpaceID            string            `mapstructure:"space_id"`
-	FinancialAccountID string            `mapstructure:"financial_account_id"`
-	ProviderID         string            `mapstructure:"provider_id"`
-	ProviderMappings   []ProviderMapping `mapstructure:"provider_mappings"`
-	Timeout            time.Duration     `mapstructure:"timeout"`
+	BaseURL            string        `mapstructure:"base_url"`
+	APIKey             string        `mapstructure:"api_key"`
+	SpaceID            string        `mapstructure:"space_id"`
+	FinancialAccountID string        `mapstructure:"financial_account_id"`
+	ProviderID         string        `mapstructure:"provider_id"`
+	Timeout            time.Duration `mapstructure:"timeout"`
 }
 
 func (c MonimePayoutConfig) ProviderForPhone(phone string) string {
 	if result := operatorlookup.LookupProviderID(phone); result != "" {
 		return result
-	}
-	for _, m := range c.ProviderMappings {
-		if len(phone) >= len(m.Prefix) && phone[:len(m.Prefix)] == m.Prefix {
-			return m.ProviderID
-		}
 	}
 	return c.ProviderID
 }
