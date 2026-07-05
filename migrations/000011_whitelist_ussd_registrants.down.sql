@@ -1,4 +1,4 @@
--- 000010: Revert — remove whitelisted USSD registrants.
+-- 000011: Revert — remove whitelisted USSD registrants.
 
 DELETE FROM ussd_allowed_subscribers
 WHERE subscriber_id_hash IN (

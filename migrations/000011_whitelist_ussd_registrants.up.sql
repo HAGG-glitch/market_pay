@@ -1,4 +1,4 @@
--- 000010: Whitelist USSD-registered vendors (Maurice, Sanah) so they can access the menu.
+-- 000011: Whitelist USSD-registered vendors (Maurice, Sanah) so they can access the menu.
 
 INSERT INTO ussd_allowed_subscribers (subscriber_id_hash, label, is_active)
 VALUES
