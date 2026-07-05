@@ -31,7 +31,8 @@ function mapVendor(v: BackendVendor): Vendor {
 
 export async function getVendors() {
   const { data } = await apiClient.get<PaginatedResponse<BackendVendor>>(
-    "/vendors"
+    "/vendors",
+    { params: { limit: 100 } }
   );
   return data.data.map(mapVendor);
 }
