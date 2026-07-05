@@ -7,8 +7,9 @@ import (
 )
 
 // AppError represents a structured application error.
+// The Code field is for internal/logging use only — never shown to end users.
 type AppError struct {
-	Code    string `json:"code"`
+	Code    string `json:"-"`
 	Message string `json:"message"`
 	Status  int    `json:"-"`
 	Err     error  `json:"-"`
@@ -37,11 +38,11 @@ func Wrap(err error, code, message string, status int) *AppError {
 // Common domain errors.
 var (
 	ErrNotFound = func(resource string) *AppError {
-		return New("NOT_FOUND", fmt.Sprintf("%s not found", resource), http.StatusNotFound)
+		return New("NOT_FOUND", fmt.Sprintf("We couldn't find this %s. It may have been removed or the link may be incorrect.", resource), http.StatusNotFound)
 	}
 
 	ErrAlreadyExists = func(resource string) *AppError {
-		return New("ALREADY_EXISTS", fmt.Sprintf("%s already exists", resource), http.StatusConflict)
+		return New("ALREADY_EXISTS", fmt.Sprintf("This %s is already registered. Please use a different one or sign in instead.", resource), http.StatusConflict)
 	}
 
 	ErrUnauthorized = func(msg string) *AppError {
@@ -57,7 +58,7 @@ var (
 	}
 
 	ErrInternalServer = func(err error) *AppError {
-		return Wrap(err, "INTERNAL_ERROR", "An internal server error occurred", http.StatusInternalServerError)
+		return Wrap(err, "INTERNAL_ERROR", "Something went wrong on our end. Please try again in a moment.", http.StatusInternalServerError)
 	}
 
 	ErrValidation = func(msg string) *AppError {
@@ -77,34 +78,36 @@ var (
 var (
 	ErrInvalidLoanState = func(from, to string) *AppError {
 		return New("INVALID_LOAN_TRANSITION",
-			fmt.Sprintf("cannot transition loan from %s to %s", from, to),
+			fmt.Sprintf("This loan cannot move from '%s' to '%s'. Only certain status changes are allowed at this stage.", from, to),
 			http.StatusBadRequest)
 	}
 
 	ErrInsufficientCreditScore = New("INSUFFICIENT_CREDIT_SCORE",
-		"credit score does not meet minimum requirement", http.StatusBadRequest)
+		"This vendor's credit score is too low to qualify for a loan at this time.", http.StatusBadRequest)
 
 	ErrGroupFrozen = New("GROUP_FROZEN",
-		"group is frozen due to member default", http.StatusBadRequest)
+		"This group has been frozen due to a member default. No actions can be taken until it is unfrozen.", http.StatusBadRequest)
 
 	ErrGroupFull = New("GROUP_FULL",
-		"group has reached maximum member limit", http.StatusBadRequest)
+		"This group has reached its maximum number of members. No more vendors can be added.", http.StatusBadRequest)
 
 	ErrGroupMinSize = New("GROUP_MIN_SIZE",
-		"group does not meet minimum size requirement", http.StatusBadRequest)
+		"This group does not have enough members yet. Please add more vendors to meet the minimum size.", http.StatusBadRequest)
 
 	ErrVendorNotEligible = New("VENDOR_NOT_ELIGIBLE",
-		"vendor does not meet loan eligibility requirements", http.StatusBadRequest)
+		"This vendor does not meet the requirements to apply for a loan. Please check their KYC status and transaction history.", http.StatusBadRequest)
 
 	ErrInsufficientTransactionHistory = New("INSUFFICIENT_TRANSACTION_HISTORY",
-		"vendor requires at least 30 days of transaction history", http.StatusBadRequest)
+		"This vendor needs at least 30 days of transaction history before they can apply for a loan.", http.StatusBadRequest)
 
-	ErrInvalidPIN = New("INVALID_PIN", "invalid PIN", http.StatusUnauthorized)
+	ErrInvalidPIN = New("INVALID_PIN",
+		"The PIN you entered is incorrect. Please try again.", http.StatusUnauthorized)
 
-	ErrUSSDSessionExpired = New("SESSION_EXPIRED", "USSD session has expired", http.StatusGone)
+	ErrUSSDSessionExpired = New("SESSION_EXPIRED",
+		"Your USSD session has expired. Please start again from the beginning.", http.StatusGone)
 
 	ErrLedgerUnbalanced = New("LEDGER_UNBALANCED",
-		"journal entries do not balance", http.StatusBadRequest)
+		"The transaction could not be completed because the journal entries are unbalanced. Please contact support.", http.StatusBadRequest)
 
 	ErrInvalidAmount = func(msg string) *AppError {
 		return New("INVALID_AMOUNT", msg, http.StatusBadRequest)

@@ -8,8 +8,8 @@ import (
 	loanmodel "github.com/marketpay/backend/internal/loan/domain/model"
 	repayapp "github.com/marketpay/backend/internal/repayment/application"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
-	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/middleware"
+	"github.com/marketpay/backend/pkg/response"
 )
 
 // Swagger schema references.
@@ -53,13 +53,13 @@ type repayRequest struct {
 func (h *Handler) Repay(c *gin.Context) {
 	var req repayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 		return
 	}
 
 	loanID, err := uuid.Parse(req.LoanID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid loan_id"})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 		return
 	}
 
@@ -73,10 +73,10 @@ func (h *Handler) Repay(c *gin.Context) {
 		MonimeRef: req.MonimeRef,
 	})
 	if err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, loan)
+	response.Success(c, loan, "Repayment processed successfully.")
 }
 
 // MarkDefault godoc
@@ -89,13 +89,13 @@ func (h *Handler) Repay(c *gin.Context) {
 func (h *Handler) MarkDefault(c *gin.Context) {
 	loanID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid loan ID"})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 		return
 	}
 
 	if err := h.svc.MarkDefaulted(c.Request.Context(), loanID); err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "loan marked as defaulted"})
+	response.Success(c, nil, "Loan marked as defaulted successfully.")
 }

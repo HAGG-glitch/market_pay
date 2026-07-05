@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	mw "github.com/marketpay/backend/pkg/middleware"
 	"github.com/marketpay/backend/pkg/realtime"
+	"github.com/marketpay/backend/pkg/response"
 	"gorm.io/gorm"
 )
 
@@ -49,18 +50,18 @@ func (h *Handler) List(c *gin.Context) {
 		FROM in_app_notifications WHERE recipient_id = ? AND is_demo = ?
 		ORDER BY created_at DESC LIMIT 50`, userID, isDemo).Scan(&rows)
 
-	c.JSON(http.StatusOK, gin.H{"data": rows})
+	response.Success(c, rows, "")
 }
 
 func (h *Handler) MarkRead(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		response.Error(c, http.StatusBadRequest, "The notification ID provided is not valid.")
 		return
 	}
 	userID := mw.GetUserID(c)
 	h.db.Exec(`UPDATE in_app_notifications SET is_read = true WHERE id = ? AND recipient_id = ?`, id, userID)
-	c.JSON(http.StatusOK, gin.H{"message": "marked read"})
+	response.Success(c, nil, "Notification marked as read.")
 }
 
 func (h *Handler) Stream(c *gin.Context) {

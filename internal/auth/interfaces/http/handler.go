@@ -10,6 +10,7 @@ import (
 	"github.com/marketpay/backend/pkg/democtx"
 	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/middleware"
+	"github.com/marketpay/backend/pkg/response"
 	"github.com/google/uuid"
 )
 
@@ -80,7 +81,7 @@ type refreshRequest struct {
 func (h *Handler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check your information. Make sure your email is valid and your password is at least 8 characters.")
 		return
 	}
 
@@ -91,16 +92,19 @@ func (h *Handler) Register(c *gin.Context) {
 		Role:     req.Role,
 	})
 	if err != nil {
-		status := apperrors.HTTPStatus(err)
-		c.JSON(status, gin.H{"error": err.Error()})
+		if apperrors.IsConflict(err) {
+			response.Error(c, http.StatusConflict, "An account with this email already exists. Please sign in instead.")
+			return
+		}
+		response.ErrorFromAppError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.Created(c, gin.H{
 		"id":    user.ID,
 		"email": user.Email,
 		"role":  user.Role,
-	})
+	}, "Account created successfully. You can now sign in.")
 }
 
 // Login godoc
@@ -114,7 +118,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please enter a valid email address and password.")
 		return
 	}
 
@@ -124,11 +128,20 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 	if err != nil {
 		status := apperrors.HTTPStatus(err)
-		c.JSON(status, gin.H{"error": err.Error()})
+		if status == http.StatusUnauthorized {
+			msg := err.Error()
+			if msg == "account is suspended" {
+				response.Error(c, http.StatusUnauthorized, "Your account has been suspended. Please contact support for assistance.")
+			} else {
+				response.Error(c, http.StatusUnauthorized, "The email or password you entered is incorrect. Please try again.")
+			}
+			return
+		}
+		response.ErrorFromAppError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, pair)
+	response.Success(c, pair, "Welcome back! You are now signed in.")
 }
 
 // VendorLogin godoc
@@ -142,34 +155,39 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) VendorLogin(c *gin.Context) {
 	var req vendorLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please provide your phone number and 4-digit PIN.")
 		return
 	}
 
 	userID, err := h.vendorSvc.AuthenticateByPhonePIN(c.Request.Context(), req.Phone, req.PIN)
 	if err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		status := apperrors.HTTPStatus(err)
+		if status == http.StatusUnauthorized {
+			response.Error(c, http.StatusUnauthorized, "The phone number or PIN you entered is incorrect. Please try again.")
+		} else {
+			response.ErrorFromAppError(c, err)
+		}
 		return
 	}
 
 	vendor, err := h.vendorSvc.GetByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
 
 	pair, err := h.authSvc.LoginVendorByID(c.Request.Context(), userID, vendor)
 	if err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, vendorLoginResponse{
+	response.Success(c, vendorLoginResponse{
 		TokenPair:    *pair,
 		VendorID:     vendor.ID.String(),
 		VendorStatus: string(vendor.Status),
 		KYCStatus:    string(vendor.KYCStatus),
-	})
+	}, "Welcome! You are now signed in.")
 }
 
 // Refresh godoc
@@ -183,14 +201,13 @@ func (h *Handler) VendorLogin(c *gin.Context) {
 func (h *Handler) Refresh(c *gin.Context) {
 	var req refreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "A refresh token is required.")
 		return
 	}
 
 	pair, err := h.authSvc.Refresh(c.Request.Context(), req.RefreshToken)
 	if err != nil {
-		status := apperrors.HTTPStatus(err)
-		c.JSON(status, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusUnauthorized, "Your session has expired. Please sign in again.")
 		return
 	}
 
@@ -207,16 +224,16 @@ func (h *Handler) Logout(c *gin.Context) {
 	userIDStr := middleware.GetUserID(c)
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		response.Error(c, http.StatusBadRequest, "There was a problem with your session. Please try signing out again.")
 		return
 	}
 
 	if err := h.authSvc.Logout(c.Request.Context(), userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Something went wrong. Please try again.")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+	response.Success(c, nil, "You have been signed out successfully.")
 }
 
 // Me godoc
@@ -229,32 +246,32 @@ func (h *Handler) Me(c *gin.Context) {
 	userIDStr := middleware.GetUserID(c)
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		response.Error(c, http.StatusBadRequest, "There was a problem with your session.")
 		return
 	}
 	user, err := h.authSvc.GetUserByID(c.Request.Context(), userID)
 	if err != nil || user == nil {
-		c.JSON(http.StatusOK, gin.H{
+		response.Success(c, gin.H{
 			"user_id": userIDStr,
 			"role":    middleware.GetRole(c),
-		})
+		}, "")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"user_id":      user.ID.String(),
 		"email":        user.Email,
 		"phone":        user.Phone,
 		"role":         user.Role,
 		"is_demo":      user.IsDemo,
 		"display_name": user.DisplayName,
-	})
+	}, "")
 }
 
 // ListUsersByRole retrieves users filtered by role query parameter.
 func (h *Handler) ListUsersByRole(c *gin.Context) {
 	roleStr := c.Query("role")
 	if roleStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "role query parameter is required"})
+		response.Error(c, http.StatusBadRequest, "Please specify a role to filter users by.")
 		return
 	}
 
@@ -263,7 +280,7 @@ func (h *Handler) ListUsersByRole(c *gin.Context) {
 
 	users, err := h.authSvc.ListUsersByRole(c.Request.Context(), role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Could not load users at this time. Please try again.")
 		return
 	}
 
@@ -281,5 +298,5 @@ func (h *Handler) ListUsersByRole(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, filtered)
+	response.Success(c, filtered, "")
 }

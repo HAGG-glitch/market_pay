@@ -1,13 +1,13 @@
 package http
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	"github.com/marketpay/backend/pkg/democtx"
 	"github.com/marketpay/backend/pkg/middleware"
+	"github.com/marketpay/backend/pkg/response"
 	"gorm.io/gorm"
 )
 
@@ -60,5 +60,5 @@ func (h *Handler) List(c *gin.Context) {
 
 	var rows []row
 	query.Order("created_at DESC").Limit(100).Find(&rows)
-	c.JSON(http.StatusOK, gin.H{"data": rows})
+	response.Success(c, rows, "")
 }

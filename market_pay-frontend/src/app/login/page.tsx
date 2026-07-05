@@ -6,6 +6,7 @@ import { useLogin } from "@/hooks/use-auth";
 import { useAuthStore } from "@/store/auth.store";
 import { useModeStore } from "@/store/mode.store";
 import { ModeToggle } from "@/components/mode-toggle";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Wallet, Shield, ChevronDown, ChevronUp } from "lucide-react";
@@ -47,6 +48,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [vendorError, setVendorError] = useState("");
+  const { toast } = useToast();
 
   const quickLogin = (userEmail: string) => {
     setEmail(userEmail);
@@ -102,6 +104,7 @@ export default function LoginPage() {
                   .then((result) => {
                     setAuth(result.user, result.token, result.refreshToken);
                     sessionStorage.removeItem("marketpay_logout");
+                    toast("Welcome! You are now signed in.", "success");
                     if (result.vendorStatus === "PENDING") {
                       router.push("/waiting-room");
                     } else {

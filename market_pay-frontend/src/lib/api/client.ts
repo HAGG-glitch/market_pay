@@ -18,7 +18,23 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const body = response.data;
+    if (body && typeof body === "object" && "success" in body) {
+      const { message, data, total, page, limit, total_pages, ...rest } = body;
+      if (data !== undefined && total !== undefined) {
+        response.data = { data, total, page, limit, total_pages };
+      } else if (data !== undefined) {
+        response.data = data;
+      } else {
+        response.data = rest;
+      }
+      if (message) {
+        Object.defineProperty(response, "message", { value: message, writable: true });
+      }
+    }
+    return response;
+  },
   async (error) => {
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
@@ -44,6 +60,17 @@ apiClient.interceptors.response.use(
         }
       }
     }
+
+    const data = error.response?.data;
+    if (data && typeof data === "object") {
+      if (data.message) {
+        error.message = data.message;
+      }
+      if ("success" in data) {
+        error.response.data = data;
+      }
+    }
+
     return Promise.reject(error);
   }
 );

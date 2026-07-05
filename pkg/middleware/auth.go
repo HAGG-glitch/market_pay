@@ -23,19 +23,19 @@ func AuthMiddleware(authSvc *authapp.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
-			respondError(c, apperrors.ErrUnauthorized("missing authorization header"))
+			respondError(c, apperrors.ErrUnauthorized("Please sign in to access this feature."))
 			return
 		}
 
 		parts := strings.SplitN(header, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-			respondError(c, apperrors.ErrUnauthorized("invalid authorization header format"))
+			respondError(c, apperrors.ErrUnauthorized("Please sign in to access this feature."))
 			return
 		}
 
 		claims, err := authSvc.ValidateAccessToken(parts[1])
 		if err != nil {
-			respondError(c, err)
+			respondError(c, apperrors.ErrUnauthorized("Your session has expired. Please sign in again."))
 			return
 		}
 
@@ -58,13 +58,13 @@ func RequireRoles(roles ...shared.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleStr, exists := c.Get(ContextKeyRole)
 		if !exists {
-			respondError(c, apperrors.ErrUnauthorized("no role in context"))
+			respondError(c, apperrors.ErrUnauthorized("Please sign in to access this feature."))
 			return
 		}
 
 		role := shared.Role(roleStr.(string))
 		if !allowed[role] {
-			respondError(c, apperrors.ErrForbidden("insufficient permissions"))
+			respondError(c, apperrors.ErrForbidden("You do not have permission to perform this action. Please contact your administrator."))
 			return
 		}
 		c.Next()
@@ -82,7 +82,7 @@ func RequireActiveVendor() gin.HandlerFunc {
 		}
 		vendorStatus, _ := c.Get(ContextKeyVendorStatus)
 		if vendorStatus == "PENDING" {
-			respondError(c, apperrors.ErrForbidden("account pending approval"))
+			respondError(c, apperrors.ErrForbidden("Your account is pending approval. A field agent will verify your information shortly."))
 			return
 		}
 		c.Next()
@@ -90,8 +90,16 @@ func RequireActiveVendor() gin.HandlerFunc {
 }
 
 func respondError(c *gin.Context, err error) {
-	status := apperrors.HTTPStatus(err)
-	c.AbortWithStatusJSON(status, gin.H{"error": err.Error()})
+	var appErr *apperrors.AppError
+	if e, ok := err.(*apperrors.AppError); ok {
+		appErr = e
+	} else {
+		appErr = apperrors.ErrInternalServer(err)
+	}
+	c.AbortWithStatusJSON(appErr.Status, gin.H{
+		"success": false,
+		"message": appErr.Message,
+	})
 }
 
 // SecurityHeaders adds security-related HTTP headers.
@@ -132,13 +140,19 @@ func GetRole(c *gin.Context) shared.Role {
 // NotFound handles 404s uniformly.
 func NotFound() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "route not found"})
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "We couldn't find what you're looking for. Please check the URL and try again.",
+		})
 	}
 }
 
 // MethodNotAllowed handles 405s uniformly.
 func MethodNotAllowed() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"success": false,
+			"message": "This request method is not allowed for this endpoint. Please try a different method.",
+		})
 	}
 }

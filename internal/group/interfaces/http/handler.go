@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	groupapp "github.com/marketpay/backend/internal/group/application"
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
-	apperrors "github.com/marketpay/backend/pkg/errors"
 	"github.com/marketpay/backend/pkg/democtx"
 	"github.com/marketpay/backend/pkg/middleware"
 	"github.com/marketpay/backend/pkg/pagination"
+	"github.com/marketpay/backend/pkg/response"
 )
 
 // Handler handles group HTTP requests.
@@ -51,7 +51,7 @@ type freezeGroupRequest struct {
 func (h *Handler) Create(c *gin.Context) {
 	var req createGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 		return
 	}
 
@@ -72,10 +72,10 @@ func (h *Handler) Create(c *gin.Context) {
 		IsDemo:       isDemo,
 	})
 	if err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, group)
+	response.Created(c, group, "Group created successfully.")
 }
 
 func (h *Handler) List(c *gin.Context) {
@@ -90,84 +90,84 @@ func (h *Handler) List(c *gin.Context) {
 
 	groups, total, err := h.svc.List(c.Request.Context(), isDemo, fieldAgentID, params.Offset(), params.Limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Something went wrong while fetching groups. Please try again.")
 		return
 	}
-	c.JSON(http.StatusOK, pagination.NewResponse(groups, total, params))
+	response.Paginated(c, groups, total, params.Page, params.Limit, "Groups retrieved successfully.")
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this group.")
 		return
 	}
 	group, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, group)
+	response.Success(c, group, "Group retrieved successfully.")
 }
 
 func (h *Handler) AddMember(c *gin.Context) {
 	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this group.")
 		return
 	}
 
 	var req addMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 		return
 	}
 
 	vendorID, err := uuid.Parse(req.VendorID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor_id"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 		return
 	}
 
 	if err := h.svc.AddMember(c.Request.Context(), groupID, vendorID); err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "member added"})
+	response.Success(c, nil, "Member added successfully.")
 }
 
 func (h *Handler) Freeze(c *gin.Context) {
 	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this group.")
 		return
 	}
 
 	var req freezeGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 		return
 	}
 
 	actorID, _ := uuid.Parse(middleware.GetUserID(c))
 	if err := h.svc.FreezeGroup(c.Request.Context(), groupID, actorID, middleware.GetRole(c), req.Reason); err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "group frozen"})
+	response.Success(c, nil, "Group frozen successfully.")
 }
 
 func (h *Handler) Unfreeze(c *gin.Context) {
 	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this group.")
 		return
 	}
 
 	actorID, _ := uuid.Parse(middleware.GetUserID(c))
 	if err := h.svc.UnfreezeGroup(c.Request.Context(), groupID, actorID, middleware.GetRole(c)); err != nil {
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "group unfrozen"})
+	response.Success(c, nil, "Group unfrozen successfully.")
 }

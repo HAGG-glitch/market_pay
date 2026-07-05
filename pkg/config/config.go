@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/marketpay/backend/pkg/operatorlookup"
 	"github.com/spf13/viper"
 )
 
@@ -100,6 +101,9 @@ type MonimePayoutConfig struct {
 }
 
 func (c MonimePayoutConfig) ProviderForPhone(phone string) string {
+	if result := operatorlookup.LookupProviderID(phone); result != "" {
+		return result
+	}
 	for _, m := range c.ProviderMappings {
 		if len(phone) >= len(m.Prefix) && phone[:len(m.Prefix)] == m.Prefix {
 			return m.ProviderID

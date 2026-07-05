@@ -20,13 +20,13 @@ import (
 
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 
-	apperrors "github.com/marketpay/backend/pkg/errors"
-
 	"github.com/marketpay/backend/pkg/democtx"
 
 	"github.com/marketpay/backend/pkg/middleware"
 
 	"github.com/marketpay/backend/pkg/pagination"
+
+	"github.com/marketpay/backend/pkg/response"
 
 )
 
@@ -164,10 +164,9 @@ type assignFieldAgentRequest struct {
 func (h *Handler) Create(c *gin.Context) {
 
 	var req createVendorRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 
 		return
 
@@ -179,7 +178,8 @@ func (h *Handler) Create(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid market_association_id"})
+		response.Error(c, http.StatusBadRequest, "The market association provided is not valid.")
+
 
 		return
 
@@ -253,13 +253,13 @@ func (h *Handler) Create(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusCreated, vendor)
+	response.Created(c, vendor, "Vendor registered successfully")
 
 }
 
@@ -303,13 +303,13 @@ func (h *Handler) List(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Something went wrong while fetching vendors. Please try again later.")
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, pagination.NewResponse(vendors, total, params))
+	response.Paginated(c, vendors, total, params.Page, params.Limit, "Vendors retrieved successfully")
 
 }
 
@@ -335,7 +335,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 
 		return
 
@@ -345,13 +345,13 @@ func (h *Handler) GetByID(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, vendor)
+	response.Success(c, vendor, "Vendor retrieved successfully")
 
 }
 
@@ -377,7 +377,7 @@ func (h *Handler) CheckEligibility(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 
 		return
 
@@ -385,13 +385,13 @@ func (h *Handler) CheckEligibility(c *gin.Context) {
 
 	if err := h.vendorSvc.CheckEligibility(c.Request.Context(), id); err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"eligible": false, "reason": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, gin.H{"eligible": true})
+	response.Success(c, gin.H{"eligible": true}, "Eligibility check completed")
 
 }
 
@@ -417,7 +417,7 @@ func (h *Handler) ApproveKYC(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 
 		return
 
@@ -429,13 +429,13 @@ func (h *Handler) ApproveKYC(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, vendor)
+	response.Success(c, vendor, "KYC approved successfully")
 
 }
 
@@ -447,7 +447,7 @@ func (h *Handler) Freeze(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 
 		return
 
@@ -457,7 +457,7 @@ func (h *Handler) Freeze(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 
 		return
 
@@ -467,13 +467,13 @@ func (h *Handler) Freeze(c *gin.Context) {
 
 	if err := h.vendorSvc.FreezeVendor(c.Request.Context(), id, actorID, middleware.GetRole(c), req.Reason); err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "vendor frozen"})
+	response.Success(c, nil, "Vendor frozen successfully")
 
 }
 
@@ -485,7 +485,7 @@ func (h *Handler) Unfreeze(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 
 		return
 
@@ -495,13 +495,13 @@ func (h *Handler) Unfreeze(c *gin.Context) {
 
 	if err := h.vendorSvc.UnfreezeVendor(c.Request.Context(), id, actorID, middleware.GetRole(c)); err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "vendor unfrozen"})
+	response.Success(c, nil, "Vendor unfrozen successfully")
 
 }
 
@@ -513,7 +513,7 @@ func (h *Handler) AssignFieldAgent(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid vendor ID"})
+		response.Error(c, http.StatusBadRequest, "We couldn't find this vendor. The link may be incorrect or the vendor may have been removed.")
 
 		return
 
@@ -523,7 +523,7 @@ func (h *Handler) AssignFieldAgent(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "Please check the information you entered and try again.")
 
 		return
 
@@ -533,7 +533,7 @@ func (h *Handler) AssignFieldAgent(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid field_agent_id"})
+		response.Error(c, http.StatusBadRequest, "The field agent ID provided is not valid.")
 
 		return
 
@@ -543,13 +543,13 @@ func (h *Handler) AssignFieldAgent(c *gin.Context) {
 
 	if err := h.vendorSvc.AssignFieldAgent(c.Request.Context(), id, fieldAgentID, actorID, middleware.GetRole(c)); err != nil {
 
-		c.JSON(apperrors.HTTPStatus(err), gin.H{"error": err.Error()})
+		response.ErrorFromAppError(c, err)
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "field agent assigned"})
+	response.Success(c, nil, "Field agent assigned successfully")
 
 }
 
@@ -571,13 +571,13 @@ func (h *Handler) ListMarketAssociations(c *gin.Context) {
 
 	if err != nil {
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, "Something went wrong while fetching market associations. Please try again later.")
 
 		return
 
 	}
 
-	c.JSON(http.StatusOK, mas)
+	response.Success(c, mas, "Market associations retrieved successfully")
 
 }
 

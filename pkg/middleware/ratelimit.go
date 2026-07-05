@@ -47,7 +47,8 @@ func (rl *RateLimiter) Limit() gin.HandlerFunc {
 
 		if int(count) > rl.limit {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded",
+				"success": false,
+				"message": "Too many requests. Please wait a moment before trying again.",
 			})
 			return
 		}
@@ -79,7 +80,8 @@ func (rl *RateLimiter) USSDLimit() gin.HandlerFunc {
 
 		if count > 10 {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "USSD session limit exceeded (10/hour)",
+				"success": false,
+				"message": "You've reached the maximum number of USSD sessions for this hour. Please try again later.",
 			})
 			return
 		}
