@@ -317,11 +317,9 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 
 		return monimeexchange.NavigateResponse{
 			Action: "navigate",
-			PageID: "mp_pub_show_reg_result",
+			PageID: "mp_pub_welcome",
 			PageData: map[string]interface{}{
-				"vendor_name": name,
-				"market_name": market,
-				"message":     fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
+				"message": fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
 			},
 		}, nil
 	}
