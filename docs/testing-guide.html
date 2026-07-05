@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MarketPay Testing Guide</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">MarketPay Testing Guide</h1>
+</header>
+<h1 id="marketpay-testing-guide-system-overview">MarketPay — Testing
+Guide &amp; System Overview</h1>
+<blockquote>
+<p><strong>Last updated:</strong> 22 June 2026<br />
+<strong>Base URL (prod):</strong>
+<code>https://market-pay-fpsi.onrender.com</code><br />
+<strong>Frontend:</strong> <code>https://market-pay.vercel.app</code>
+(manual redeploy required after backend push)</p>
+</blockquote>
+<hr />
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol type="1">
+<li><a href="#1-system-architecture">System Architecture</a></li>
+<li><a href="#2-ussd-flows">USSD Flows</a></li>
+<li><a href="#3-vendor-registration">Vendor Registration (New)</a></li>
+<li><a href="#4-loan-disbursement">Loan Disbursement</a></li>
+<li><a href="#5-repayment-tracking">Repayment Tracking (New)</a></li>
+<li><a href="#6-test-accounts">Test Accounts</a></li>
+<li><a href="#7-testing-scenarios">Testing Scenarios</a></li>
+<li><a href="#8-key-decisions">Key Decisions</a></li>
+</ol>
+<hr />
+<h2 id="system-architecture">1. System Architecture</h2>
+<pre><code>┌────────────────┐     ┌──────────────────┐     ┌───────────────┐
+│   Monime       │────▶│  MarketPay API   │────▶│  PostgreSQL   │
+│  USSD Gateway  │     │  (Render)        │     │  (Render)     │
+│  + Payout API  │◀────│  :8080           │◀────│  savwise_ai   │
+└────────────────┘     └──────────────────┘     └───────────────┘
+                               │
+                               ▼
+                        ┌───────────────┐
+                        │   Frontend    │
+                        │  (Vercel)     │
+                        └───────────────┘</code></pre>
+<h3 id="key-components">Key Components</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Component</th>
+<th>Technology</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API Server</td>
+<td>Go + Gin + GORM</td>
+<td><code>cmd/api/main.go</code></td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL</td>
+<td>Render (savwise_ai)</td>
+</tr>
+<tr>
+<td>Migrations</td>
+<td>SQL files</td>
+<td><code>migrations/000001</code>–<code>000011</code></td>
+</tr>
+<tr>
+<td>USSD Exchange</td>
+<td>Monime platform + RSA crypto</td>
+<td><code>internal/monime/exchange/</code></td>
+</tr>
+<tr>
+<td>Payouts</td>
+<td>Monime Payout API</td>
+<td><code>pkg/monimepayout/</code></td>
+</tr>
+<tr>
+<td>Webhooks</td>
+<td>Monime v2 payload</td>
+<td><code>internal/monime/interfaces/http/webhook.go</code></td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td>Next.js (standalone)</td>
+<td><code>market_pay-frontend/</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ussd-flows">2. USSD Flows</h2>
+<h3 id="a.-public-flow-monime-ussd-public-flow.json">2a. Public Flow
+(<code>monime-ussd-public-flow.json</code>)</h3>
+<p>No access gate — any mobile subscriber can use it.</p>
+<pre><code>Welcome to MarketPay
+1. Pay a vendor
+2. Register as vendor
+3. Exit</code></pre>
+<h4 id="pay-a-vendor-path">Pay a Vendor Path</h4>
+<pre><code>→ Enter vendor code (e.g. MP12345)
+→ Enter amount in SLE (min 1)
+→ Confirm &amp; pay / Cancel
+→ PIN entry (Monime platform handles collection)
+→ Result displayed</code></pre>
+<h4 id="register-as-vendor-path">Register as Vendor Path</h4>
+<pre><code>→ Enter full name
+→ Enter market name
+→ Enter phone number (e.g. 23276123456)
+→ Confirm / Cancel
+→ Result: &quot;Registration submitted. A field agent will contact you.&quot;</code></pre>
+<h3 id="b.-vendor-flow-monime-ussd-vendor-flow.json">2b. Vendor Flow
+(<code>monime-ussd-vendor-flow.json</code>)</h3>
+<p>Access gate required — subscriber must be in
+<code>ussd_allowed_subscribers</code>.</p>
+<pre><code>→ Access Gate (SHA-256 subscriberId check)
+  → Menu:
+    1. My credit score
+    2. Apply for loan
+    3. Repay loan
+    4. Check balance
+    5. Transaction history
+    6. Exit</code></pre>
+<h4 id="repay-loan-path">Repay Loan Path</h4>
+<pre><code>→ Shows outstanding balance
+→ Enter repayment amount
+→ Confirm &amp; pay / Cancel
+→ PIN entry (Monime platform handles collection)
+→ Result displayed
+→ LoanRepayment record created (PENDING)
+→ Webhook financial_account.credited → confirmed (COMPLETED)</code></pre>
+<hr />
+<h2 id="vendor-registration">3. Vendor Registration</h2>
+<h3 id="flow-steps">Flow Steps</h3>
+<ol type="1">
+<li>Subscriber selects “Register as vendor” on public USSD menu</li>
+<li>Collects: name → market → phone number</li>
+<li>Phone normalization: <code>normalizePhone()</code> handles all
+formats:
+<ul>
+<li><code>23276123456</code> → <code>+23276123456</code></li>
+<li><code>076123456</code> → <code>+232076123456</code></li>
+<li><code>+23276123456</code> → <code>+23276123456</code></li>
+</ul></li>
+<li>Creates <code>users</code> record with
+<code>is_active = false</code></li>
+<li>Creates <code>vendors</code> record with
+<code>Status = PENDING</code></li>
+<li>Links subscriber to vendor in <code>ussd_subscribers</code></li>
+<li>NOT added to <code>ussd_allowed_subscribers</code> yet</li>
+</ol>
+<h3 id="approval-waiting-room">Approval (Waiting Room)</h3>
+<p>After USSD registration, the vendor is in a “waiting room”:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>State</th>
+<th>Can log in?</th>
+<th>Can use vendor USSD menu?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Just registered (PENDING)</td>
+<td>No (<code>is_active = false</code>)</td>
+<td>No (not in allowed_subscribers)</td>
+</tr>
+<tr>
+<td>Field agent approves KYC</td>
+<td>Yes (<code>is_active = true</code>)</td>
+<td>Yes (if subscriberId added)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Approval endpoint:</strong>
+<code>PUT /api/v1/vendors/:id/kyc/approve</code><br />
+- Sets vendor status → <code>ACTIVE</code> - Sets KYC status →
+<code>VERIFIED</code> - Sets <code>users.is_active = true</code> - To
+also grant USSD access, add subscriberId to
+<code>ussd_allowed_subscribers</code> (via DB or future endpoint)</p>
+<h3 id="registration-message">Registration Message</h3>
+<blockquote>
+<p><em>“Registration submitted for [Name] at [Market]. Phone: [Phone]. A
+field agent will contact you to verify and activate your
+account.”</em></p>
+</blockquote>
+<hr />
+<h2 id="loan-disbursement">4. Loan Disbursement</h2>
+<h3 id="states">States</h3>
+<pre><code>APPROVED → DISBURSEMENT_PENDING → ACTIVE (on payout.completed)
+                                 → APPROVED (on payout.failed)</code></pre>
+<h3 id="disburse-action">Disburse Action</h3>
+<p><code>PUT /api/v1/loans/:id/disburse</code></p>
+<ol type="1">
+<li>Validates loan is <code>APPROVED</code> and user has permission</li>
+<li>Determines mobile money provider from phone prefix:
+<ul>
+<li><code>+23276/77/78</code> → <code>m17</code> (Orange SL)</li>
+<li><code>+23230/33/34</code> → <code>m18</code> (Africell)</li>
+<li>configurable via <code>provider_mappings</code> in
+<code>config.yaml</code></li>
+</ul></li>
+<li>Calls Monime Payout API (<code>POST /v1/payouts</code>)</li>
+<li>Sets loan state to <code>DISBURSEMENT_PENDING</code></li>
+<li>Stores <code>monime_reference</code> = payout ID</li>
+</ol>
+<h3 id="payout-webhooks">Payout Webhooks</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Event</th>
+<th>Handler</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>payout.completed</code></td>
+<td><code>handlePayoutCompleted</code></td>
+<td>State → <code>ACTIVE</code>, generates schedules, sets
+<code>provider_ref</code></td>
+</tr>
+<tr>
+<td><code>payout.failed</code></td>
+<td><code>handlePayoutFailed</code></td>
+<td>State → <code>APPROVED</code>, clears ref, stores
+<code>failure_reason</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="failed-payout-retry">Failed Payout — Retry</h3>
+<p>If a payout fails, the loan returns to <code>APPROVED</code>. The
+three-dot menu on the loans page allows re-disbursing.</p>
+<hr />
+<h2 id="repayment-tracking">5. Repayment Tracking</h2>
+<h3 id="table-loan_repayments">Table: <code>loan_repayments</code></h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID (PK)</td>
+<td>Primary key</td>
+</tr>
+<tr>
+<td><code>loan_id</code></td>
+<td>UUID (FK→loans)</td>
+<td>The loan being repaid</td>
+</tr>
+<tr>
+<td><code>vendor_id</code></td>
+<td>UUID (FK→vendors)</td>
+<td>The vendor repaying</td>
+</tr>
+<tr>
+<td><code>amount</code></td>
+<td>DECIMAL(15,2)</td>
+<td>Repayment amount</td>
+</tr>
+<tr>
+<td><code>monime_ref</code></td>
+<td>VARCHAR(255)</td>
+<td>Monime collection reference (webhook match key)</td>
+</tr>
+<tr>
+<td><code>payment_ref</code></td>
+<td>VARCHAR(255) UNIQUE</td>
+<td>Our internal reference (<code>REPAY-{session}-{ts}</code>)</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>JSONB</td>
+<td>Session data, masked_phone, subscriber_id</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>VARCHAR(50)</td>
+<td><code>PENDING</code> → <code>COMPLETED</code> /
+<code>FAILED</code></td>
+</tr>
+<tr>
+<td><code>paid_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td>When confirmed</td>
+</tr>
+<tr>
+<td><code>created_at</code> / <code>updated_at</code></td>
+<td>TIMESTAMPTZ</td>
+<td>Audit timestamps</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-repayments-work">How Repayments Work</h3>
+<pre><code>USSD Repayment Flow:
+
+1. Vendor selects &quot;Repay loan&quot; → sees balance
+2. Enters amount → confirms
+3. Monime collect_payment template processes PIN &amp; collection
+4. Callback hits handleRepaymentResult:
+   - Extracts ExternalRef from ExportedData (or falls back to payment_ref)
+   - Creates LoanRepayment record (status=PENDING)
+   - Shows result to user
+5. Monime sends webhook financial_account.credited:
+   - handleAccountCredited matches by monime_ref (object.id)
+   - Fallback: matches by metadata.payment_ref
+   - Calls RepaymentService.ConfirmRepayment()
+     → marks LoanRepayment as COMPLETED
+     → calls existing Repay() to apply to loan schedules</code></pre>
+<h3 id="webhook-matching-strategy">Webhook Matching Strategy</h3>
+<ol type="1">
+<li><strong>Primary:</strong> Match
+<code>financial_account.credited.object.id</code> against
+<code>loan_repayments.monime_ref</code></li>
+<li><strong>Fallback:</strong> Check
+<code>data.metadata.payment_ref</code> against
+<code>loan_repayments.payment_ref</code></li>
+</ol>
+<p>If no match is found, the repayment stays <code>PENDING</code> and
+must be reconciled manually.</p>
+<hr />
+<h2 id="test-accounts">6. Test Accounts</h2>
+<h3 id="vendors-login-via-phone-pin-on-website">Vendors (Login via phone
++ PIN on website)</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Phone</th>
+<th>PIN</th>
+<th>Mobile Money</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Araia</td>
+<td><code>+23276902971</code></td>
+<td><code>2006</code></td>
+<td>Orange SL (m17)</td>
+</tr>
+<tr>
+<td>Moses Moore</td>
+<td><code>+23233346989</code></td>
+<td><code>2004</code></td>
+<td>Africell (m18)</td>
+</tr>
+<tr>
+<td>Nelson</td>
+<td><code>+23279826564</code></td>
+<td><code>2005</code></td>
+<td>Orange SL (m17)</td>
+</tr>
+<tr>
+<td>Bernard (Gamanga)</td>
+<td><code>+23272571067</code></td>
+<td><code>2005</code></td>
+<td>Orange SL (m17)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="loan-officer-login-via-email-password">Loan Officer (Login via
+email + password)</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Email</th>
+<th>Password</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Joshua Yoki</td>
+<td><code>joshua@marketpay.sl</code></td>
+<td><code>password123</code></td>
+<td>LOAN_OFFICER</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vendor-phones-by-network">Vendor Phones by Network</h3>
+<table>
+<thead>
+<tr>
+<th>Network</th>
+<th>Prefix</th>
+<th>Monime Provider ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Orange SL</td>
+<td><code>+23276</code>, <code>+23277</code>, <code>+23278</code></td>
+<td><code>m17</code></td>
+</tr>
+<tr>
+<td>Africell</td>
+<td><code>+23230</code>, <code>+23233</code>, <code>+23234</code></td>
+<td><code>m18</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="testing-scenarios">7. Testing Scenarios</h2>
+<h3 id="scenario-1-public-pay-vendor">Scenario 1: Public Pay Vendor</h3>
+<ol type="1">
+<li>Dial USSD code (public flow)</li>
+<li>Select “Pay a vendor”</li>
+<li>Enter vendor code <code>MP12345</code> (or any valid code)</li>
+<li>Enter amount (e.g. <code>10</code>)</li>
+<li>Confirm → PIN entry → success</li>
+<li><strong>Verify:</strong> Notification sent to LOAN_OFFICER role</li>
+</ol>
+<h3 id="scenario-2-public-vendor-registration">Scenario 2: Public Vendor
+Registration</h3>
+<ol type="1">
+<li>Dial USSD code (public flow)</li>
+<li>Select “Register as vendor”</li>
+<li>Enter name → market → phone</li>
+<li>Confirm</li>
+<li><strong>Verify:</strong> Message says “Registration submitted. A
+field agent will contact you.”</li>
+<li><strong>Verify:</strong> New vendor created with
+<code>Status = PENDING</code>, <code>users.is_active = false</code></li>
+</ol>
+<h3 id="scenario-3-field-agent-approval">Scenario 3: Field Agent
+Approval</h3>
+<ol type="1">
+<li>Log into website as LOAN_OFFICER</li>
+<li>Navigate to vendor management</li>
+<li>Find the new vendor</li>
+<li>Click “Approve KYC”</li>
+<li><strong>Verify:</strong> Vendor status → <code>ACTIVE</code>, user →
+<code>is_active = true</code></li>
+<li><strong>Optional:</strong> Add subscriberId to
+<code>ussd_allowed_subscribers</code> for USSD access</li>
+</ol>
+<h3 id="scenario-4-full-loan-cycle-moses-moore-africell">Scenario 4:
+Full Loan Cycle (Moses Moore — Africell)</h3>
+<p><strong>Should succeed (Africell + m18):</strong></p>
+<ol type="1">
+<li>Log in as LOAN_OFFICER</li>
+<li>Create loan for Moses Moore (<code>+23233346989</code>)</li>
+<li>Approve loan</li>
+<li>Disburse loan (should use <code>m18</code> provider)</li>
+<li><strong>Verify:</strong> Loan state →
+<code>DISBURSEMENT_PENDING</code></li>
+<li>Wait for webhook <code>payout.completed</code></li>
+<li><strong>Verify:</strong> Loan state → <code>ACTIVE</code>, schedules
+generated</li>
+<li>Moses checks balance via USSD → shows outstanding</li>
+</ol>
+<h3 id="scenario-5-full-loan-cycle-araia-orange-sl">Scenario 5: Full
+Loan Cycle (Araia — Orange SL)</h3>
+<p><strong>Should succeed (Orange + m17):</strong></p>
+<ol type="1">
+<li>Log in as LOAN_OFFICER</li>
+<li>Create loan for Araia (<code>+23276902971</code>)</li>
+<li>Approve loan</li>
+<li>Disburse loan (should use <code>m17</code> provider)</li>
+<li><strong>Verify:</strong> Loan state →
+<code>DISBURSEMENT_PENDING</code></li>
+<li>Wait for webhook <code>payout.completed</code></li>
+<li><strong>Verify:</strong> Loan state → <code>ACTIVE</code>, schedules
+generated</li>
+</ol>
+<h3 id="scenario-6-repay-via-ussd-vendor-flow">Scenario 6: Repay via
+USSD (Vendor Flow)</h3>
+<p>Prerequisite: Vendor has an ACTIVE loan.</p>
+<ol type="1">
+<li>Dial USSD code (vendor flow)</li>
+<li>Select “Repay loan”</li>
+<li>Enter amount</li>
+<li>Confirm → PIN entry</li>
+<li><strong>Verify:</strong> <code>LoanRepayment</code> record created
+(<code>status = PENDING</code>)</li>
+<li>Wait for webhook <code>financial_account.credited</code></li>
+<li><strong>Verify:</strong> <code>LoanRepayment</code> status →
+<code>COMPLETED</code></li>
+<li><strong>Verify:</strong> Loan schedule updated (AmountPaid
+increased)</li>
+</ol>
+<h3 id="scenario-7-payout-failure-retry">Scenario 7: Payout Failure →
+Retry</h3>
+<ol type="1">
+<li>Disburse loan (any vendor)</li>
+<li>Webhook returns <code>payout.failed</code></li>
+<li><strong>Verify:</strong> Loan state → <code>APPROVED</code>,
+<code>failure_reason</code> set</li>
+<li>On loans page, click three-dot menu → “Retry Disbursement”</li>
+<li><strong>Verify:</strong> New payout sent, state →
+<code>DISBURSEMENT_PENDING</code> again</li>
+</ol>
+<hr />
+<h2 id="key-decisions">8. Key Decisions</h2>
+<h3 id="webhook-signature">Webhook Signature</h3>
+<p>Monime sends empty <code>X-Monime-Signature</code>. We log a warning
+but accept the webhook. No 401 rejection.</p>
+<h3 id="phone-normalization">Phone Normalization</h3>
+<p><code>normalizePhone()</code> strips non-digits, handles
+<code>232...</code>, <code>076...</code>, <code>+...</code> formats.
+Outputs <code>+232...</code> format.</p>
+<h3 id="subscriber-identity">Subscriber Identity</h3>
+<ul>
+<li><code>global.subscriberId</code> = SHA-256 hash of MSISDN — used for
+identification</li>
+<li><code>global.subscriberMsisdn</code> = masked
+(e.g. <code>233XX XXX 4567</code>) — display only, never used as
+lookup</li>
+</ul>
+<h3 id="provider-selection">Provider Selection</h3>
+<p>Provider ID (<code>m17</code> / <code>m18</code>) resolved from
+<code>provider_mappings</code> in <code>config.yaml</code> by phone
+prefix, not hardcoded.</p>
+<h3 id="migration-auto-apply">Migration Auto-Apply</h3>
+<p>Render runs <code>./migrate up &amp;&amp; ./app</code> on startup.
+Migrations 000001–000011 apply automatically.</p>
+<h3 id="loan-source">Loan Source</h3>
+<ul>
+<li><code>WEB</code> (default) — created via website</li>
+<li><code>USSD</code> — created via USSD application flow</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>MarketPay Testing Guide</title>
+  <style>
+
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">body { font-family: Calibri, Arial, sans-serif; margin: 40px; line-height: 1.5; }
+h1 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+h2 { color: #1e40af; margin-top: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+h3 { color: #334155; margin-top: 24px; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
+th { background-color: #2563eb; color: white; }
+tr:nth-child(even) { background-color: #f8fafc; }
+code { background-color: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+pre { background-color: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background-color: transparent; color: #e2e8f0; }
+.note { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
+blockquote { background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 8px 16px; margin: 16px 0; }
+hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">MarketPay Testing Guide</h1>
+</header>
+<h1 id="marketpay-testing-guide-login-credentials">MarketPay — Testing
+Guide &amp; Login Credentials</h1>
+<blockquote>
+<p><strong>Base URL (prod):</strong>
+<code>https://market-pay-fpsi.onrender.com</code><br />
+<strong>Base URL (local):</strong>
+<code>http://localhost:8080</code><br />
+<strong>Frontend:</strong>
+<code>https://market-pay.vercel.app</code><br />
+<strong>Swagger UI:</strong>
+<code>http://localhost:8080/swagger/index.html</code></p>
+</blockquote>
+<hr />
+<h2 id="login-credentials-by-role">1. Login Credentials by Role</h2>
+<h3 id="web-login-email-password">Web Login (email + password)</h3>
+<p>All passwords below are the <strong>actual working passwords</strong>
+matching the bcrypt hashes in the seed data.</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Role</th>
+<th>Email</th>
+<th>Password</th>
+<th>Phone</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SUPER_ADMIN</strong></td>
+<td><code>superadmin@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000001</code></td>
+</tr>
+<tr>
+<td><strong>ADMIN</strong></td>
+<td><code>admin.demo@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000010</code></td>
+</tr>
+<tr>
+<td><strong>LOAN_OFFICER</strong></td>
+<td><code>officer@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000003</code></td>
+</tr>
+<tr>
+<td><strong>LOAN_OFFICER</strong></td>
+<td><code>joshua@marketpay.sl</code></td>
+<td><code>password123</code></td>
+<td><code>+23273608360</code></td>
+</tr>
+<tr>
+<td><strong>FIELD_AGENT</strong></td>
+<td><code>agent@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000004</code></td>
+</tr>
+<tr>
+<td><strong>MFI_PARTNER</strong></td>
+<td><code>mfi.demo@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000011</code></td>
+</tr>
+<tr>
+<td><strong>VENDOR</strong></td>
+<td><code>vendor.demo@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000012</code></td>
+</tr>
+<tr>
+<td><strong>CUSTOMER</strong></td>
+<td><code>customer.demo@marketpay.sl</code></td>
+<td><code>password</code></td>
+<td><code>+23276000013</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="vendor-login-phone-pin-via-authvendor-login">Vendor Login (phone
++ PIN via <code>/auth/vendor-login</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Phone</th>
+<th>PIN</th>
+<th>Mobile Network</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Abraham Araia</td>
+<td><code>+23276902971</code></td>
+<td><code>2006</code></td>
+<td>Orange SL (m17)</td>
+</tr>
+<tr>
+<td>Emmanuel Nelson</td>
+<td><code>+23279826564</code></td>
+<td><code>2005</code></td>
+<td>Orange SL (m17)</td>
+</tr>
+<tr>
+<td>Moses Moore</td>
+<td><code>+23233346989</code></td>
+<td><code>2004</code></td>
+<td>Africell (m18)</td>
+</tr>
+<tr>
+<td>Bernard Gamanga</td>
+<td><code>+23272571067</code></td>
+<td><code>2005</code></td>
+<td>Orange SL (m17)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The seed migration file says
+<code>Admin@1234</code> in the comments, but the actual bcrypt hash
+matches <code>password</code>.</p>
+</blockquote>
+<hr />
+<h2 id="api-endpoint-reference">2. API Endpoint Reference</h2>
+<h3 id="authentication">Authentication</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Auth</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/register</code></td>
+<td>No</td>
+<td><code>{email, phone, password, role}</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/login</code></td>
+<td>No</td>
+<td><code>{email, password}</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/vendor-login</code></td>
+<td>No</td>
+<td><code>{phone, pin}</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/refresh</code></td>
+<td>No</td>
+<td><code>{refresh_token}</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/logout</code></td>
+<td>Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/auth/me</code></td>
+<td>Yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/auth/users?role=LOAN_OFFICER</code></td>
+<td>Yes</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vendors">Vendors</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Required Roles</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/vendors</code></td>
+<td>ADMIN / SUPER_ADMIN / FIELD_AGENT</td>
+<td>Register vendor</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/vendors</code></td>
+<td>ADMIN / SUPER_ADMIN / LOAN_OFFICER / FIELD_AGENT</td>
+<td>List all</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/vendors/:id</code></td>
+<td>Yes</td>
+<td>Get one</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/vendors/:id/eligibility</code></td>
+<td>Yes</td>
+<td>Check loan eligibility</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/vendors/:id/kyc/approve</code></td>
+<td>ADMIN / SUPER_ADMIN / LOAN_OFFICER</td>
+<td>Approve KYC</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/vendors/:id/freeze</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Freeze vendor</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/vendors/:id/unfreeze</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Unfreeze vendor</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/vendors/:id/field-agent</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Assign field agent</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/vendors/market-associations</code></td>
+<td>Yes</td>
+<td>List markets</td>
+</tr>
+</tbody>
+</table>
+<h3 id="loans">Loans</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Required Roles</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/loans</code></td>
+<td>VENDOR</td>
+<td>Apply for loan</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/loans?state=UNDER_REVIEW</code></td>
+<td>ADMIN / SUPER_ADMIN / LOAN_OFFICER</td>
+<td>List by state</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/loans/:id</code></td>
+<td>Yes</td>
+<td>Get loan</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/loans/:id/schedule</code></td>
+<td>Yes</td>
+<td>Repayment schedule</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/loans/:id/approve</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Approve</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/loans/:id/reject</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Reject</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/loans/:id/disburse</code></td>
+<td>ADMIN / SUPER_ADMIN</td>
+<td>Disburse (sends mobile money)</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/loans/:id/revert-disbursement</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Revert failed disbursement</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/loans/vendor/:vendor_id</code></td>
+<td>Yes</td>
+<td>Vendor’s loans</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/loans/payment-plans</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>List payment plans</td>
+</tr>
+</tbody>
+</table>
+<h3 id="repayments">Repayments</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Required Roles</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/repayments</code></td>
+<td>VENDOR / ADMIN</td>
+<td><code>{loan_id, amount, monime_reference}</code></td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/repayments/loans/:id/default</code></td>
+<td>ADMIN / SUPER_ADMIN</td>
+<td>Mark loan as defaulted</td>
+</tr>
+</tbody>
+</table>
+<h3 id="groups">Groups</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Required Roles</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/groups</code></td>
+<td>VENDOR / ADMIN / FIELD_AGENT</td>
+<td>Create group</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/groups</code></td>
+<td>ADMIN / SUPER_ADMIN / LOAN_OFFICER / FIELD_AGENT</td>
+<td>List groups</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/groups/:id</code></td>
+<td>Yes</td>
+<td>Get group</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/groups/:id/members</code></td>
+<td>VENDOR / ADMIN / FIELD_AGENT</td>
+<td>Add member</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/groups/:id/freeze</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Freeze group</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/groups/:id/unfreeze</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+<td>Unfreeze group</td>
+</tr>
+</tbody>
+</table>
+<h3 id="payments">Payments</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Required Roles</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/payments</code></td>
+<td>CUSTOMER / VENDOR</td>
+<td>Create payment</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/payments/:id/complete</code></td>
+<td>ADMIN</td>
+<td>Complete with ref</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/payments/vendor/:vendor_id</code></td>
+<td>Yes</td>
+<td>Vendor receipts</td>
+</tr>
+</tbody>
+</table>
+<h3 id="reports">Reports</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Required Roles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/portfolio</code></td>
+<td>ADMIN / SUPER_ADMIN / MFI_PARTNER</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/repayment-rate</code></td>
+<td>ADMIN / SUPER_ADMIN / MFI_PARTNER</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/default-rate</code></td>
+<td>ADMIN / SUPER_ADMIN</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/disbursement-volume</code></td>
+<td>ADMIN / SUPER_ADMIN / MFI_PARTNER</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/vendor-distribution</code></td>
+<td>ADMIN / SUPER_ADMIN</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/partner-summary</code></td>
+<td>ADMIN / SUPER_ADMIN / MFI_PARTNER</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/officer-queue</code></td>
+<td>LOAN_OFFICER / ADMIN / SUPER_ADMIN</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/dashboard-summary</code></td>
+<td>ADMIN / SUPER_ADMIN / MFI_PARTNER / LOAN_OFFICER</td>
+</tr>
+</tbody>
+</table>
+<h3 id="notifications-audit">Notifications &amp; Audit</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Auth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/notifications</code></td>
+<td>Yes (scoped by demo/live mode)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/notifications/stream</code></td>
+<td>Yes (SSE stream)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/audit-logs</code></td>
+<td>SUPER_ADMIN only</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/health</code></td>
+<td>No (health check)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ussd-called-by-monime-gateway-not-frontend">USSD (called by
+Monime gateway, not frontend)</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/ussd</code></td>
+<td>form: <code>sessionId, phoneNumber, serviceCode, text</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="testing-scenarios">3. Testing Scenarios</h2>
+<h3 id="scenario-1-super-admin-full-system-access">Scenario 1: Super
+Admin — Full System Access</h3>
+<ol type="1">
+<li>Login at <code>https://market-pay.vercel.app</code> with
+<code>superadmin@marketpay.sl</code> / <code>password</code></li>
+<li>View dashboard overview</li>
+<li>Navigate to Audit Logs — see all system actions</li>
+<li>Navigate to Reports — see all analytics</li>
+<li>Manage vendors, loans, groups</li>
+</ol>
+<h3 id="scenario-2-loan-officer-loan-lifecycle">Scenario 2: Loan Officer
+— Loan Lifecycle</h3>
+<ol type="1">
+<li>Login as <code>joshua@marketpay.sl</code> /
+<code>password123</code></li>
+<li>Navigate to <strong>Vendors</strong> → see Araia, Nelson, Moses,
+Bernard</li>
+<li>Navigate to <strong>Loans</strong> → review pending
+applications</li>
+<li>Create a loan for a vendor:
+<ul>
+<li>Click “Apply” or create via API</li>
+<li>Set amount and payment plan</li>
+</ul></li>
+<li><strong>Approve</strong> the loan</li>
+<li><strong>Disburse</strong> the loan (triggers Monime mobile money
+payout)
+<ul>
+<li>Araia (<code>+23276902971</code>): sends via Orange SL (m17)</li>
+<li>Moses (<code>+23233346989</code>): sends via Africell (m18)</li>
+</ul></li>
+</ol>
+<h3 id="scenario-3-vendor-ussd-loan-application">Scenario 3: Vendor —
+USSD Loan Application</h3>
+<ol type="1">
+<li>Dial USSD code (vendor flow)</li>
+<li>Enter PIN to authenticate</li>
+<li>Select “Apply for loan”</li>
+<li>Enter amount</li>
+<li>Confirm</li>
+<li>Loan officer sees the application in the dashboard</li>
+</ol>
+<h3 id="scenario-4-field-agent-vendor-onboarding">Scenario 4: Field
+Agent — Vendor Onboarding</h3>
+<ol type="1">
+<li>Login as <code>agent@marketpay.sl</code> /
+<code>password</code></li>
+<li>View assigned vendors</li>
+<li>Approve KYC for pending vendors</li>
+<li>Navigate to create new vendor</li>
+</ol>
+<h3 id="scenario-5-mfi-partner-portfolio-view">Scenario 5: MFI Partner —
+Portfolio View</h3>
+<ol type="1">
+<li>Login as <code>mfi.demo@marketpay.sl</code> /
+<code>password</code></li>
+<li>View portfolio summary</li>
+<li>Check disbursement volume and repayment rates</li>
+<li>View partner summary report</li>
+</ol>
+<hr />
+<h2 id="mobile-money-provider-prefixes">4. Mobile Money Provider
+Prefixes</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Network</th>
+<th>Monime Provider ID</th>
+<th>Phone Prefixes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Orange SL</strong></td>
+<td><code>m17</code></td>
+<td><code>+23272</code>, <code>+23276</code>, <code>+23277</code>,
+<code>+23278</code>, <code>+23279</code></td>
+</tr>
+<tr>
+<td><strong>Africell</strong></td>
+<td><code>m18</code></td>
+<td><code>+23230</code>, <code>+23233</code>, <code>+23234</code> (also
+the default fallback)</td>
+</tr>
+</tbody>
+</table>
+<p>Configured in <code>configs/config.yaml</code> under
+<code>monime.payout.provider_mappings</code>.</p>
+<hr />
+<h2 id="test-with-curl-powershell">5. Test with curl (PowerShell)</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Login</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="va">$login</span> <span class="op">=</span> <span class="fu">Invoke-RestMethod</span> <span class="op">-</span>Uri <span class="st">&quot;https://market-pay-fpsi.onrender.com/api/v1/auth/login&quot;</span> `</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>Method POST `</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>ContentType <span class="st">&quot;application/json&quot;</span> `</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>Body <span class="st">&#39;{&quot;email&quot;:&quot;superadmin@marketpay.sl&quot;,&quot;password&quot;:&quot;password&quot;}&#39;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="va">$token</span> <span class="op">=</span> <span class="va">$login</span><span class="op">.</span><span class="fu">access_token</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Get market associations</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">Invoke-RestMethod</span> <span class="op">-</span>Uri <span class="st">&quot;https://market-pay-fpsi.onrender.com/api/v1/vendors/market-associations&quot;</span> `</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>Headers @<span class="op">{</span> Authorization <span class="op">=</span> <span class="st">&quot;Bearer </span><span class="va">$token</span><span class="st">&quot;</span> <span class="op">}</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># List vendors</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">Invoke-RestMethod</span> <span class="op">-</span>Uri <span class="st">&quot;https://market-pay-fpsi.onrender.com/api/v1/vendors&quot;</span> `</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>Headers @<span class="op">{</span> Authorization <span class="op">=</span> <span class="st">&quot;Bearer </span><span class="va">$token</span><span class="st">&quot;</span> <span class="op">}</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co"># List loans</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">Invoke-RestMethod</span> <span class="op">-</span>Uri <span class="st">&quot;https://market-pay-fpsi.onrender.com/api/v1/loans?state=UNDER_REVIEW&quot;</span> `</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>Headers @<span class="op">{</span> Authorization <span class="op">=</span> <span class="st">&quot;Bearer </span><span class="va">$token</span><span class="st">&quot;</span> <span class="op">}</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Health check (no auth)</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">Invoke-RestMethod</span> <span class="op">-</span>Uri <span class="st">&quot;https://market-pay-fpsi.onrender.com/health&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="system-architecture">6. System Architecture</h2>
+<pre><code>┌────────────────┐     ┌──────────────────┐     ┌───────────────┐
+│   Monime       │────▶│  MarketPay API   │────▶│  PostgreSQL   │
+│  USSD Gateway  │     │  (Render)        │     │  (Render)     │
+│  + Payout API  │◀────│  :8080           │◀────│  savwise_ai   │
+└────────────────┘     └──────────────────┘     └───────────────┘
+                               │
+                               ▼
+                        ┌───────────────┐
+                        │   Frontend    │
+                        │  (Vercel)     │
+                        └───────────────┘</code></pre>
+<h3 id="roles-permissions">Roles &amp; Permissions</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SUPER_ADMIN</strong></td>
+<td>Full system oversight, audit logs, all actions</td>
+</tr>
+<tr>
+<td><strong>ADMIN</strong></td>
+<td>Operations management, vendor/loan/group admin</td>
+</tr>
+<tr>
+<td><strong>MFI_PARTNER</strong></td>
+<td>Microfinance institution — portfolio reports only</td>
+</tr>
+<tr>
+<td><strong>LOAN_OFFICER</strong></td>
+<td>Reviews loans, manages vendors &amp; groups</td>
+</tr>
+<tr>
+<td><strong>FIELD_AGENT</strong></td>
+<td>Onboards vendors in the field</td>
+</tr>
+<tr>
+<td><strong>VENDOR</strong></td>
+<td>Market vendor — applies for loans, makes payments</td>
+</tr>
+<tr>
+<td><strong>CUSTOMER</strong></td>
+<td>End customer — pays vendors via USSD</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="common-issues-fixes">7. Common Issues &amp; Fixes</h2>
+<h3 id="issue-login-returns-401">Issue: Login returns 401</h3>
+<ul>
+<li>Verify you’re using <code>password</code> (not
+<code>Admin@1234</code>) for accounts from seed migrations 000002 and
+000004</li>
+<li>Verify you’re using <code>password123</code> for accounts from
+migration 000007</li>
+<li>Check that <code>is_active = true</code> in the database</li>
+<li>For vendors: use <code>/auth/vendor-login</code> with phone + PIN
+(not email/password)</li>
+</ul>
+<h3 id="issue-loan-disbursement-fails">Issue: Loan disbursement
+fails</h3>
+<ul>
+<li>Check the vendor’s phone prefix matches a configured provider
+mapping</li>
+<li>Africell numbers use <code>m18</code>, Orange SL numbers use
+<code>m17</code></li>
+<li>Unknown prefixes fall back to the default provider</li>
+</ul>
+<h3 id="issue-demolive-mode">Issue: Demo/Live mode</h3>
+<ul>
+<li>All seeded accounts are <strong>Demo</strong> mode</li>
+<li>API responses are scoped by the
+<code>X-MarketPay-Mode: demo|live</code> header</li>
+<li>Quick Login (impersonation) is only available in Demo mode</li>
+</ul>
+<hr />
+<h2 id="quick-start-local-development">8. Quick Start (Local
+Development)</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Clone and configure</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">Copy-Item</span> <span class="op">.</span><span class="fu">env</span><span class="op">.</span><span class="fu">example</span> <span class="op">.</span><span class="fu">env</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>docker compose up <span class="op">--</span>build <span class="op">-</span>d</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Run migrations (after DB is ready)</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="op">./</span>migrate up</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Start API</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>go run <span class="op">./</span>cmd<span class="op">/</span>api <span class="op">-</span>config configs<span class="op">/</span>config<span class="op">.</span><span class="fu">local</span><span class="op">.</span><span class="fu">yaml</span></span></code></pre></div>
+<p><strong>Local URLs:</strong> - API:
+<code>http://localhost:8080</code> - Swagger:
+<code>http://localhost:8080/swagger/index.html</code> - Frontend:
+<code>http://localhost:3000</code></p>
+<hr />
+<p><em>Generated from migrations/000002_seed_data.up.sql,
+000004_demo_accounts.up.sql,
+000007_seed_loan_officer_vendors.up.sql</em></p>
+</body>
+</html>
