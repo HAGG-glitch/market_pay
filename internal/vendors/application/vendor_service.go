@@ -131,6 +131,12 @@ func (s *VendorService) ApproveKYC(ctx context.Context, vendorID uuid.UUID, appr
 	vendor.KYCVerifiedAt = &now
 	vendor.Activate()
 
+	// Seed transaction history so vendor is immediately eligible for loans
+	if vendor.FirstTransactionAt == nil {
+		past := now.AddDate(0, 0, -60)
+		vendor.FirstTransactionAt = &past
+	}
+
 	if err := s.vendors.Update(ctx, vendor); err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
