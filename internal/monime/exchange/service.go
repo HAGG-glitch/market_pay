@@ -857,12 +857,31 @@ func normalizePhone(msisdn string) string {
 		}
 		return -1
 	}, msisdn)
+
+	if digits == "" {
+		return ""
+	}
+
+	// Already has country code
 	if strings.HasPrefix(digits, "232") {
 		return "+" + digits
 	}
-	if len(digits) == 9 {
+
+	// Local format with leading 0: strip 0, add 232
+	if digits[0] == '0' {
+		local := strings.TrimLeft(digits, "0")
+		if local == "" {
+			return ""
+		}
+		return "+232" + local
+	}
+
+	// Short local format (8-9 digits, no leading 0): add 232
+	if len(digits) >= 8 && len(digits) <= 9 {
 		return "+232" + digits
 	}
+
+	// Anything else: just prepend +
 	return "+" + digits
 }
 
