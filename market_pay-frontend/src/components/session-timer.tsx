@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
-import { LogOut } from "lucide-react";
+import { LogOut, RefreshCw } from "lucide-react";
 
 function decodeToken(token: string): { exp?: number } | null {
   try {
@@ -34,6 +34,32 @@ export function SessionTimer() {
     localStorage.removeItem("marketpay_user");
     router.push("/login");
   }, [logout, router]);
+
+  const refreshSession = useCallback(() => {
+    const refreshToken = localStorage.getItem("marketpay_refresh");
+    if (!refreshToken) return;
+    fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/auth/refresh`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      }
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.access_token) {
+          localStorage.setItem("marketpay_token", data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem("marketpay_refresh", data.refresh_token);
+          }
+          warnShownRef.current = false;
+          setShowWarning(false);
+          resetInactivity();
+        }
+      })
+      .catch(() => {});
+  }, [resetInactivity]);
 
   const resetInactivity = useCallback(() => {
     if (inactivityRef.current) clearTimeout(inactivityRef.current);
@@ -124,6 +150,13 @@ export function SessionTimer() {
             </p>
             <p className="text-xs text-amber-600">Continue working to extend</p>
           </div>
+          <button
+            onClick={refreshSession}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+          >
+            <RefreshCw size={12} />
+            Continue
+          </button>
           <button
             onClick={doLogout}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
