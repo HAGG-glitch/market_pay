@@ -656,6 +656,7 @@ func (s *Service) handleRepaymentResult(ctx context.Context, p *monimeexchange.E
 				MonimeRef:  ref,
 				PaymentRef: ref,
 				Metadata: map[string]interface{}{
+					"payment_ref":   ref,
 					"source":        "ussd_repayment",
 					"session_id":    p.Global.SessionID,
 					"masked_phone":  p.Global.SubscriberMsisdn,
@@ -791,6 +792,7 @@ func (s *Service) handlePublicPaymentResult(ctx context.Context, p *monimeexchan
 				MonimeRef:  ref,
 				PaymentRef: ref,
 				Metadata: map[string]interface{}{
+					"payment_ref":  ref,
 					"source":       "ussd_public_payment",
 					"vendor_code":  code,
 					"session_id":   p.Global.SessionID,

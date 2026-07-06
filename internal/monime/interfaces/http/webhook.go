@@ -93,7 +93,13 @@ func (h *WebhookHandler) Handle(c *gin.Context) {
 	}
 
 	// ── Signature validation (best-effort) ───────────────────────────────
-	signature := c.GetHeader("X-Monime-Signature")
+	// Monime sends "Monime-Signature" (not "X-Monime-Signature").
+	// Gin c.GetHeader is case-insensitive but respects the canonical key exactly,
+	// so "Monime-Signature" won't match "X-Monime-Signature".
+	signature := c.GetHeader("Monime-Signature")
+	if signature == "" {
+		signature = c.GetHeader("X-Monime-Signature")
+	}
 	if h.adapter != nil {
 		secret := h.adapter.GetWebhookSecret()
 		if secret == "" {

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	monimemodel "github.com/marketpay/backend/internal/monime/domain/model"
@@ -102,10 +104,67 @@ func (m *MonimeAdapter) GetWebhookSecret() string {
 }
 
 func (m *MonimeAdapter) ValidateWebhook(payload []byte, signature string) bool {
+	m.log.Info("validating webhook signature",
+		zap.String("signature", signature),
+		zap.ByteString("body", payload),
+	)
+
+	if ts, sig, ok := parseMonimeSignature(signature); ok {
+		signed := fmt.Sprintf("%d.%s", ts, string(payload))
+		mac := hmac.New(sha256.New, []byte(m.cfg.WebhookSecret))
+		mac.Write([]byte(signed))
+		expected := hex.EncodeToString(mac.Sum(nil))
+		valid := hmac.Equal([]byte(expected), []byte(sig))
+		if !valid {
+			m.log.Warn("timestamped signature mismatch",
+				zap.Int64("ts", ts),
+				zap.String("expected", expected),
+				zap.String("received", sig),
+			)
+			return false
+		}
+
+		now := time.Now().Unix()
+		diff := now - ts
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff > 300 {
+			m.log.Warn("webhook timestamp outside tolerance", zap.Int64("ts", ts), zap.Int64("now", now))
+			return false
+		}
+		return true
+	}
+
 	mac := hmac.New(sha256.New, []byte(m.cfg.WebhookSecret))
 	mac.Write(payload)
 	expected := hex.EncodeToString(mac.Sum(nil))
 	return hmac.Equal([]byte(expected), []byte(signature))
+}
+
+// parseMonimeSignature parses "t=<ts>,s=<hex>" or "t=<ts>,v1=<hex>" format.
+// Returns timestamp (seconds), hex signature, and whether parsing succeeded.
+func parseMonimeSignature(sig string) (int64, string, bool) {
+	var ts int64
+	var hexVal string
+
+	parts := strings.Split(sig, ",")
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if strings.HasPrefix(p, "t=") {
+			if n, err := strconv.ParseInt(p[2:], 10, 64); err == nil {
+				ts = n
+			}
+		} else if strings.HasPrefix(p, "s=") || strings.HasPrefix(p, "v1=") {
+			hexVal = strings.TrimPrefix(p, "s=")
+			hexVal = strings.TrimPrefix(hexVal, "v1=")
+		}
+	}
+
+	if ts == 0 || hexVal == "" {
+		return 0, "", false
+	}
+	return ts, hexVal, true
 }
 
 func (m *MonimeAdapter) GetTransaction(ctx context.Context, reference string) (*monimemodel.MonimeTransaction, error) {
