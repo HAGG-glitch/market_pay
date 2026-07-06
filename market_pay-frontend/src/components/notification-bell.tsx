@@ -2,13 +2,41 @@
 
 import { Bell } from "lucide-react";
 import { useNotifications, useMarkNotificationRead } from "@/hooks/use-notifications";
+import type { InAppNotification } from "@/lib/api/notification.service";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+const eventRoutes: Record<string, string> = {
+  VendorCreated: "/vendors",
+  VendorRegistered: "/vendors",
+  LoanRequested: "/loans",
+  LoanApplied: "/loans",
+  LoanApproved: "/loans",
+  LoanRejected: "/loans",
+  LoanDisbursed: "/loans",
+  RepaymentReceived: "/payments",
+  PaymentReceived: "/payments",
+  PaymentCompleted: "/payments",
+  AccountFrozen: "/vendors",
+  AccountUnfrozen: "/vendors",
+  GroupCreated: "/group-lending",
+  GroupFrozen: "/group-lending",
+  LoanDefaulted: "/loans",
+};
 
 export function NotificationBell() {
+  const router = useRouter();
   const { data: notifications = [] } = useNotifications();
   const markRead = useMarkNotificationRead();
   const [open, setOpen] = useState(false);
   const unread = notifications.filter((n) => !n.is_read).length;
+
+  const handleClick = (n: InAppNotification) => {
+    if (!n.is_read) markRead.mutate(n.id);
+    setOpen(false);
+    const href = eventRoutes[n.event_type] || null;
+    if (href) router.push(href);
+  };
 
   return (
     <div className="relative">
@@ -43,9 +71,7 @@ export function NotificationBell() {
                   <button
                     key={n.id}
                     type="button"
-                    onClick={() => {
-                      if (!n.is_read) markRead.mutate(n.id);
-                    }}
+                    onClick={() => handleClick(n)}
                     className={`w-full border-b px-4 py-3 text-left text-sm hover:bg-gray-50 ${
                       n.is_read ? "bg-white" : "bg-primary/5"
                     }`}

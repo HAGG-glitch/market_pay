@@ -10,10 +10,10 @@ export interface InAppNotification {
 }
 
 export async function getNotifications() {
-  const { data } = await apiClient.get<{ data: InAppNotification[] }>(
+  const { data } = await apiClient.get<InAppNotification[]>(
     "/notifications"
   );
-  return data.data ?? [];
+  return data ?? [];
 }
 
 export async function markNotificationRead(id: string) {

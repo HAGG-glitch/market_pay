@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
+import { useNotifications } from "@/hooks/use-notifications";
 import {
   LayoutDashboard,
   Wallet,
@@ -85,6 +86,22 @@ export function Sidebar() {
   const role = user?.role;
   const navItems = role ? roleNavItems[role] : [];
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: notifications = [] } = useNotifications();
+
+  const unreadCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of notifications) {
+      if (!n.is_read) {
+        counts[n.event_type] = (counts[n.event_type] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [notifications]);
+
+  const badgeFor = (eventTypes: string[]) => {
+    const total = eventTypes.reduce((sum, et) => sum + (unreadCounts[et] || 0), 0);
+    return total > 0 ? total : undefined;
+  };
 
   const handleLogout = async () => {
     try {
@@ -147,6 +164,14 @@ export function Sidebar() {
         <nav className="flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main navigation">
           {navItems.map((item) => {
             const isGroups = item.label === "Groups" || item.label === "Group";
+
+            const badgeEventTypes: Record<string, string[]> = {
+              Loans: ["LoanRequested", "LoanDisbursed", "LoanDefaulted"],
+              "Loan Queue": ["LoanRequested", "LoanDisbursed", "LoanDefaulted"],
+              Vendors: ["VendorCreated", "VendorRegistered"],
+            };
+            const badge = badgeFor(badgeEventTypes[item.label] || []);
+
             return (
               <div key={item.href} className="relative">
                 <Link
@@ -170,7 +195,12 @@ export function Sidebar() {
                   )}
                 >
                   {item.icon}
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {badge !== undefined && (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
                 </Link>
                 {isGroups && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
