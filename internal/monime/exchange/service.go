@@ -247,9 +247,9 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 	}
 
 	if name == "" || market == "" {
-		return monimeexchange.NavigateResponse{
-			Action: "navigate", PageID: "mp_pub_welcome",
-			PageData: map[string]interface{}{"message": "Registration failed. Name and market are required."},
+		return monimeexchange.StopResponse{
+			Action:  "stop",
+			Message: "Registration failed. Name and market are required.",
 		}, nil
 	}
 
@@ -325,19 +325,16 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 			"New vendor registered",
 			fmt.Sprintf("%s registered via USSD at %s (phone: %s)", name, market, phone), false)
 
-		return monimeexchange.NavigateResponse{
-			Action: "navigate",
-			PageID: "mp_pub_welcome",
-			PageData: map[string]interface{}{
-				"message": fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
-			},
+		return monimeexchange.StopResponse{
+			Action:  "stop",
+			Message: fmt.Sprintf("Registration submitted for %s at %s.\nPhone: %s\nA field agent will contact you to verify and activate your account.", name, market, phone),
 		}, nil
 	}
 
 	if strings.Contains(err.Error(), "registered") || strings.Contains(err.Error(), "exists") {
-		return monimeexchange.NavigateResponse{
-			Action: "navigate", PageID: "mp_pub_welcome",
-			PageData: map[string]interface{}{"message": "This phone number is already registered. Please contact your field agent."},
+		return monimeexchange.StopResponse{
+			Action:  "stop",
+			Message: "This phone number is already registered. Please contact your field agent.",
 		}, nil
 	}
 	s.log.Info("vendor reg step7 - raw error", zap.String("err_msg", err.Error()))
