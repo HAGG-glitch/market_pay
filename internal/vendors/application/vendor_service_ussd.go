@@ -10,6 +10,7 @@ import (
 	shared "github.com/marketpay/backend/internal/shared/domain/model"
 	vendormodel "github.com/marketpay/backend/internal/vendors/domain/model"
 	apperrors "github.com/marketpay/backend/pkg/errors"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,11 +30,13 @@ type USSDRegisterInput struct {
 
 // RegisterFromUSSD registers a vendor using phone as primary identity.
 func (s *VendorService) RegisterFromUSSD(ctx context.Context, input USSDRegisterInput) (*vendormodel.Vendor, error) {
+	s.log.Info("ussd_reg step1 - find existing")
 	existing, _ := s.vendors.FindByPhone(ctx, input.Phone)
 	if existing != nil {
 		return nil, apperrors.ErrAlreadyExists("vendor with this phone")
 	}
 
+	s.log.Info("ussd_reg step2 - list markets")
 	markets, _ := s.vendors.ListMarketAssociations(ctx)
 	var marketID uuid.UUID
 	for _, m := range markets {
@@ -45,11 +48,14 @@ func (s *VendorService) RegisterFromUSSD(ctx context.Context, input USSDRegister
 	if marketID == uuid.Nil && len(markets) > 0 {
 		marketID = markets[0].ID
 	}
+	s.log.Info("ussd_reg step3 - market", zap.String("market_id", marketID.String()))
 
+	s.log.Info("ussd_reg step4 - bcrypt start")
 	pinHash, err := bcrypt.GenerateFromPassword([]byte(input.PIN), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, apperrors.ErrInternalServer(err)
 	}
+	s.log.Info("ussd_reg step5 - bcrypt done")
 
 	code := fmt.Sprintf("MP%05d", time.Now().Unix()%100000)
 	vendor := &vendormodel.Vendor{
@@ -70,10 +76,14 @@ func (s *VendorService) RegisterFromUSSD(ctx context.Context, input USSDRegister
 		FieldAgentID:        input.FieldAgentID,
 	}
 
+	s.log.Info("ussd_reg step6 - vendor create start")
 	if err := s.vendors.Create(ctx, vendor); err != nil {
+		s.log.Error("ussd_reg step6 - vendor create failed", zap.Error(err))
 		return nil, apperrors.ErrInternalServer(err)
 	}
+	s.log.Info("ussd_reg step7 - vendor created", zap.String("vendor_id", vendor.ID.String()))
 
+	s.log.Info("ussd_reg step8 - publish event")
 	_ = s.events.Publish(ctx, "VendorCreated", vendor.ID.String(), map[string]interface{}{
 		"vendor_id":    vendor.ID.String(),
 		"vendor_code":  code,
@@ -81,6 +91,7 @@ func (s *VendorService) RegisterFromUSSD(ctx context.Context, input USSDRegister
 		"source":       "ussd",
 	})
 
+	s.log.Info("ussd_reg step9 - done")
 	return vendor, nil
 }
 

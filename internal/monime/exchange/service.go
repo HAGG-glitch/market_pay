@@ -77,7 +77,10 @@ func (s *Service) Handle(ctx context.Context, raw monimeexchange.EncryptedReques
 		s.db.Exec(`INSERT INTO monime_exchange_sessions (session_id) VALUES (?) ON CONFLICT DO NOTHING`, idempotencyKey)
 	}
 
-	resp, err := s.route(ctx, payload)
+	routeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	resp, err := s.route(routeCtx, payload)
 	if err != nil {
 		s.log.Error("exchange route", zap.Error(err), zap.String("page", currentPage))
 		stop := monimeexchange.StopResponse{
@@ -266,6 +269,8 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 		last = strings.Join(parts[1:], " ")
 	}
 
+	s.log.Info("vendor reg step1", zap.String("phone", phone), zap.String("name", name), zap.String("market", market))
+
 	userID := uuid.New()
 	syntheticEmail := fmt.Sprintf("%s@ussd.marketpay.sl", strings.TrimPrefix(phone, "+"))
 	pinHash := "$2a$10$WOx9GopNZF933jMGRn16/.1IyKAE3087DTJLUfhmJHOYArxQf/Rgq"
@@ -280,6 +285,7 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 			VALUES (?, ?, ?, ?, 'VENDOR', false, false, false, ?) ON CONFLICT DO NOTHING`,
 			userID, syntheticEmail, phone, pinHash, name)
 	}
+	s.log.Info("vendor reg step2", zap.String("user_id", userID.String()), zap.String("existing_user_id", existingUser.Id))
 
 	var fieldAgentID *uuid.UUID
 	var loanOfficer struct{ Id string }
@@ -288,6 +294,7 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 			fieldAgentID = &parsed
 		}
 	}
+	s.log.Info("vendor reg step3", zap.String("field_agent_id", loanOfficer.Id))
 
 	_, err := s.vendorSvc.RegisterFromUSSD(ctx, vendorapp.USSDRegisterInput{
 		FirstName:    first,
@@ -301,14 +308,17 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 		FieldAgentID: fieldAgentID,
 		IsDemo:       false,
 	})
+	s.log.Info("vendor reg step4", zap.Bool("success", err == nil), zap.Error(err))
 	if err == nil {
 		vendor, findErr := s.vendorSvc.GetByUserID(ctx, userID)
+		s.log.Info("vendor reg step5", zap.Bool("vendor_found", findErr == nil), zap.Error(findErr))
 		if findErr != nil {
 			s.log.Warn("vendor lookup after registration", zap.Error(findErr))
 		} else {
 			s.upsertSubscriber(ctx, p.Global.SubscriberID, vendor.ID, p.Global.SubscriberMsisdn)
 			s.db.Exec(`INSERT INTO ussd_allowed_subscribers (subscriber_id_hash, is_active) VALUES (?, true) ON CONFLICT (subscriber_id_hash) DO UPDATE SET is_active = true, updated_at = NOW()`,
 				p.Global.SubscriberID)
+			s.log.Info("vendor reg step6", zap.String("vendor_id", vendor.ID.String()))
 		}
 
 		s.notifier.NotifyRole(ctx, "LOAN_OFFICER", "VendorCreated",
@@ -330,6 +340,7 @@ func (s *Service) registerVendorPublicFlow(ctx context.Context, p *monimeexchang
 			PageData: map[string]interface{}{"message": "This phone number is already registered. Please contact your field agent."},
 		}, nil
 	}
+	s.log.Info("vendor reg step7 - raw error", zap.String("err_msg", err.Error()))
 	return nil, err
 }
 
