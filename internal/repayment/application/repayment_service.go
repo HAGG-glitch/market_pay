@@ -84,10 +84,10 @@ func (s *RepaymentService) Repay(ctx context.Context, input RepayInput) (*loanmo
 		return nil, apperrors.ErrInternalServer(err)
 	}
 
-	// Filter to this loan's schedules
+	// Filter to this loan's schedules (include PARTIAL — still has outstanding balance)
 	var loanSchedules []loanmodel.RepaymentSchedule
 	for _, sc := range schedules {
-		if sc.LoanID == input.LoanID && sc.Status == "PENDING" {
+		if sc.LoanID == input.LoanID && sc.Status != "PAID" {
 			loanSchedules = append(loanSchedules, sc)
 		}
 	}
