@@ -35,6 +35,11 @@ export function SessionTimer() {
     router.push("/login");
   }, [logout, router]);
 
+  const resetInactivity = useCallback(() => {
+    if (inactivityRef.current) clearTimeout(inactivityRef.current);
+    inactivityRef.current = setTimeout(doLogout, INACTIVITY_TIMEOUT);
+  }, [doLogout]);
+
   const refreshSession = useCallback(() => {
     const refreshToken = localStorage.getItem("marketpay_refresh");
     if (!refreshToken) return;
@@ -60,11 +65,6 @@ export function SessionTimer() {
       })
       .catch(() => {});
   }, [resetInactivity]);
-
-  const resetInactivity = useCallback(() => {
-    if (inactivityRef.current) clearTimeout(inactivityRef.current);
-    inactivityRef.current = setTimeout(doLogout, INACTIVITY_TIMEOUT);
-  }, [doLogout]);
 
   // Listen for user activity
   useEffect(() => {
