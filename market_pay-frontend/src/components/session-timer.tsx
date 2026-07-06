@@ -25,6 +25,7 @@ export function SessionTimer() {
   const [showWarning, setShowWarning] = useState(false);
   const inactivityRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnShownRef = useRef(false);
+  const refreshingRef = useRef(false);
 
   const doLogout = useCallback(() => {
     logout();
@@ -42,7 +43,8 @@ export function SessionTimer() {
 
   const refreshSession = useCallback(() => {
     const refreshToken = localStorage.getItem("marketpay_refresh");
-    if (!refreshToken) return;
+    if (!refreshToken || refreshingRef.current) return;
+    refreshingRef.current = true;
     fetch(
       `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/auth/refresh`,
       {
@@ -63,7 +65,8 @@ export function SessionTimer() {
           resetInactivity();
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { refreshingRef.current = false; });
   }, [resetInactivity]);
 
   // Listen for user activity
@@ -78,20 +81,23 @@ export function SessionTimer() {
     };
   }, [resetInactivity]);
 
-  // Tick the token timer
+  // Tick the token timer — read fresh token from localStorage on every tick
+  // so auto-refresh or Continue button updates are picked up immediately.
   useEffect(() => {
-    const token = localStorage.getItem("marketpay_token");
-    if (!token) return;
-
-    const payload = decodeToken(token);
-    if (!payload?.exp) return;
-
     const tick = () => {
+      const token = localStorage.getItem("marketpay_token");
+      if (!token) {
+        setTimeLeft(null);
+        return;
+      }
+      const payload = decodeToken(token);
+      if (!payload?.exp) return;
+
       const now = Math.floor(Date.now() / 1000);
-      const remaining = payload.exp! - now;
+      const remaining = payload.exp - now;
       setTimeLeft(remaining > 0 ? remaining : 0);
 
-      if (remaining <= 0) {
+      if (remaining <= 0 && !refreshingRef.current) {
         doLogout();
         return;
       }
@@ -104,7 +110,8 @@ export function SessionTimer() {
       // Try to refresh when < 2 min remain
       if (remaining <= 120) {
         const refreshToken = localStorage.getItem("marketpay_refresh");
-        if (refreshToken) {
+        if (refreshToken && !refreshingRef.current) {
+          refreshingRef.current = true;
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/auth/refresh`,
             {
@@ -124,7 +131,8 @@ export function SessionTimer() {
                 setShowWarning(false);
               }
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => { refreshingRef.current = false; });
         }
       }
     };
